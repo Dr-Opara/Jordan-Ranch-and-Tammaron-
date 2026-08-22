@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 const FBCAD_QUERY_URL = "https://gisweb.fbcad.org/arcgis/rest/services/Hosted/FBCAD_Public_Data/FeatureServer/0/query";
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
   if (!exactAddress) {
     return NextResponse.json({
       matched: false,
+      autoApproved: false,
       status: "no_property_match",
       message: "We could not match that address in Fort Bend CAD public parcel data. You can still submit proof of residency for manual review.",
     });
@@ -118,8 +120,50 @@ export async function POST(request: Request) {
   const confidence = 60 + (communityMatched ? 20 : 0) + (ownerMatched ? 20 : 0);
   const strongMatch = ownerMatched && communityMatched;
 
+  let autoApproved = false;
+  if (strongMatch) {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (serviceRoleKey && supabaseUrl) {
+      const admin = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const now = new Date().toISOString();
+
+      const { error: verificationError } = await admin.from("resident_verifications").upsert({
+        user_id: user.id,
+        community,
+        resident_type: "property_owner",
+        residential_address: body?.address?.trim() ?? address,
+        evidence_path: null,
+        legal_first_name: firstName,
+        legal_last_name: lastName,
+        verification_method: "fbcad_match",
+        property_match_status: "strong_match",
+        property_match_confidence: confidence,
+        fbcad_quickrefid: exactAddress.quickrefid ?? null,
+        matched_owner_name: ownerName,
+        matched_situs: situs,
+        matched_legal: legal,
+        public_record_checked_at: now,
+        status: "verified",
+        reviewed_at: now,
+      }, { onConflict: "user_id" });
+
+      if (!verificationError) {
+        const { error: profileError } = await admin.from("profiles").update({
+          community,
+          verification_status: "verified",
+          updated_at: now,
+        }).eq("id", user.id);
+        autoApproved = !profileError;
+      }
+    }
+  }
+
   return NextResponse.json({
     matched: strongMatch,
+    autoApproved,
     status: strongMatch ? "strong_match" : ownerMatched ? "name_match_only" : communityMatched ? "address_community_match" : "address_match_only",
     confidence,
     quickRefId: exactAddress.quickrefid ?? null,
@@ -129,7 +173,9 @@ export async function POST(request: Request) {
     ownerMatched,
     communityMatched,
     message: strongMatch
-      ? "Public property data matched your address, community and name. Your verification can be expedited."
+      ? (autoApproved
+          ? "Public property data matched your address, community and name. You are verified and can continue into the app."
+          : "Public property data matched your address, community and name, but automatic approval is not configured yet.")
       : "We found the property, but the public ownership record did not fully match. This is common for renters, spouses, trusts, recent buyers or owners who opted out of online display. You can submit proof of residency for review.",
   });
 }
