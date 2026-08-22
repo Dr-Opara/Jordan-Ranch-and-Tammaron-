@@ -5,134 +5,62 @@ import { useRouter } from "next/navigation";
 import { Home, Store, Tags, User, ShoppingBag, CalendarDays, Building2, PlusCircle, Eye, MapPin, ShieldCheck, Play, Bookmark, LogOut, BadgePercent } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-type Tab = "home" | "marketplace" | "business" | "deals" | "profile";
-type Profile = { id:string; first_name:string; last_initial:string; profile_photo_url:string|null; community:"jordan_ranch"|"tamarron"; profession:string|null; business_name:string|null; member_since:string };
-type Listing = { id:string; title:string; price:number|null; community:"jordan_ranch"|"tamarron"; view_count:number; image_urls:string[]; category:string; created_at:string };
-type Business = { id:string; name:string; category:string; description:string|null; average_rating:number; rating_count:number; profile_view_count:number; logo_url:string|null; image_urls:string[] };
-type Ad = { id:string; headline:string; body:string|null; format:string; media_urls:string[]; impression_count:number; video_play_count:number; click_count:number; businesses:{id:string;name:string}|null };
-type Deal = { id:string; title:string; description:string|null; code:string|null; view_count:number; claim_count:number; expires_at:string; businesses:{id:string;name:string}|null };
-type Props = { profile:Profile; residentCount:{total:number;jordan:number;tamarron:number}; listings:Listing[]; businesses:Business[]; homeAds:Ad[]; localAds:Ad[]; deals:Deal[] };
+type Tab="home"|"marketplace"|"business"|"deals"|"profile";
+type Profile={id:string;first_name:string;last_initial:string;profile_photo_url:string|null;community:"jordan_ranch"|"tamarron";profession:string|null;business_name:string|null;member_since:string};
+type Listing={id:string;title:string;price:number|null;community:"jordan_ranch"|"tamarron";view_count:number;image_urls:string[];category:string;created_at:string};
+type Business={id:string;name:string;category:string;description:string|null;average_rating:number;rating_count:number;profile_view_count:number;logo_url:string|null;image_urls:string[]};
+type Ad={id:string;headline:string;body:string|null;format:string;media_urls:string[];impression_count:number;video_play_count:number;click_count:number;businesses:{id:string;name:string}|null};
+type Deal={id:string;title:string;description:string|null;code:string|null;view_count:number;claim_count:number;expires_at:string;businesses:{id:string;name:string}|null};
+type Update={id:string;title:string;body:string|null;category:string;published_at:string};
+type Event={id:string;title:string;description:string|null;location:string|null;starts_at:string;ends_at:string|null};
+type Props={profile:Profile;residentCount:{total:number;jordan:number;tamarron:number};listings:Listing[];businesses:Business[];homeAds:Ad[];localAds:Ad[];deals:Deal[];updates:Update[];events:Event[]};
 
-const communityLabel = (c:string) => c === "jordan_ranch" ? "Jordan Ranch" : "Tamarron";
+const communityLabel=(c:string)=>c==="jordan_ranch"?"Jordan Ranch":"Tamarron";
 
-export default function ResidentApp({ profile, residentCount, listings, businesses, homeAds, localAds, deals }: Props) {
-  const [tab, setTab] = useState<Tab>("home");
-  const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [claimed, setClaimed] = useState<Set<string>>(new Set());
-  const router = useRouter();
-  const comingSoon = useMemo(() => [...homeAds, ...localAds].filter((a, i, arr) => a.format === "coming_soon" && arr.findIndex(x => x.id === a.id) === i), [homeAds, localAds]);
+export default function ResidentApp({profile,residentCount,listings,businesses,homeAds,localAds,deals,updates,events}:Props){
+ const [tab,setTab]=useState<Tab>("home");
+ const [saved,setSaved]=useState<Set<string>>(new Set());
+ const [claimed,setClaimed]=useState<Set<string>>(new Set());
+ const [marketplaceQuery,setMarketplaceQuery]=useState("");
+ const [businessQuery,setBusinessQuery]=useState("");
+ const [businessCategory,setBusinessCategory]=useState("All");
+ const router=useRouter();
+ const comingSoon=useMemo(()=>[...homeAds,...localAds].filter((a,i,arr)=>a.format==="coming_soon"&&arr.findIndex(x=>x.id===a.id)===i),[homeAds,localAds]);
+ const filteredListings=useMemo(()=>{const q=marketplaceQuery.trim().toLowerCase();return q?listings.filter(l=>`${l.title} ${l.category}`.toLowerCase().includes(q)):listings;},[listings,marketplaceQuery]);
+ const categories=useMemo(()=>["All",...Array.from(new Set(businesses.map(b=>b.category)))],[businesses]);
+ const filteredBusinesses=useMemo(()=>{const q=businessQuery.trim().toLowerCase();return businesses.filter(b=>(businessCategory==="All"||b.category===businessCategory)&&(!q||`${b.name} ${b.category} ${b.description??""}`.toLowerCase().includes(q)));},[businesses,businessQuery,businessCategory]);
 
-  useEffect(() => {
-    const supabase = createClient();
-    const unique = [...homeAds, ...localAds].filter((a, i, arr) => arr.findIndex(x => x.id === a.id) === i);
-    unique.forEach(a => { void supabase.rpc("record_ad_event", { p_ad_id: a.id, p_event: "impression" }); });
-  }, [homeAds, localAds]);
+ useEffect(()=>{const s=createClient();const unique=[...homeAds,...localAds].filter((a,i,arr)=>arr.findIndex(x=>x.id===a.id)===i);unique.forEach(a=>{void s.rpc("record_ad_event",{p_ad_id:a.id,p_event:"impression"});});},[homeAds,localAds]);
+ useEffect(()=>{if(tab!=="deals")return;const s=createClient();deals.forEach(d=>{void s.rpc("record_deal_view",{p_deal_id:d.id});});},[tab,deals]);
 
-  useEffect(() => {
-    if (tab !== "deals") return;
-    const supabase = createClient();
-    deals.forEach(d => { void supabase.rpc("record_deal_view", { p_deal_id: d.id }); });
-  }, [tab, deals]);
+ async function toggleSave(kind:"marketplace"|"business"|"deal",id:string){const s=createClient();const key=`${kind}:${id}`;const table=kind==="marketplace"?"saved_marketplace":kind==="business"?"saved_businesses":"saved_deals";const column=kind==="marketplace"?"listing_id":kind==="business"?"business_id":"deal_id";if(saved.has(key)){await s.from(table).delete().eq("user_id",profile.id).eq(column,id);setSaved(p=>{const n=new Set(p);n.delete(key);return n;});}else{await s.from(table).insert({user_id:profile.id,[column]:id});setSaved(p=>new Set(p).add(key));}}
+ async function claimDeal(id:string){const s=createClient();const {error}=await s.from("deal_claims").upsert({deal_id:id,user_id:profile.id},{onConflict:"deal_id,user_id",ignoreDuplicates:true});if(!error)setClaimed(p=>new Set(p).add(id));}
+ async function adEvent(adId:string,event:"video_play"|"click"){const s=createClient();await s.rpc("record_ad_event",{p_ad_id:adId,p_event:event});}
+ async function signOut(){const s=createClient();await s.auth.signOut();router.replace("/login");router.refresh();}
+ function openAdBusiness(a:Ad){void adEvent(a.id,"click");if(a.businesses?.id)router.push(`/business/${a.businesses.id}`);}
+ const AdCard=({ad}:{ad:Ad})=><article className="card">{ad.media_urls[0]?(ad.format==="video"?<video className="ad-video" src={ad.media_urls[0]} autoPlay muted loop playsInline onPlay={()=>void adEvent(ad.id,"video_play")}/>:<div className="media-placeholder" style={{backgroundImage:`url(${ad.media_urls[0]})`,backgroundSize:"cover",backgroundPosition:"center"}}/>):<div className="media-placeholder">{ad.format==="video"&&<Play size={34}/>} Sponsored media</div>}<div className="card-body"><span className="badge sponsored">Sponsored</span><div className="card-title">{ad.headline}</div>{ad.body&&<div className="card-copy">{ad.body}</div>}<div className="meta"><span>{ad.businesses?.name}</span><span><Eye size={12}/> {ad.impression_count} views</span>{ad.format==="video"&&<span>{ad.video_play_count} video plays</span>}</div>{ad.businesses?.id&&<div className="cta-row"><button className="btn-primary" onClick={()=>openAdBusiness(ad)}>View Business</button></div>}</div></article>;
 
-  async function toggleSave(kind:"marketplace"|"business"|"deal", id:string) {
-    const supabase = createClient();
-    const key = `${kind}:${id}`;
-    const table = kind === "marketplace" ? "saved_marketplace" : kind === "business" ? "saved_businesses" : "saved_deals";
-    const column = kind === "marketplace" ? "listing_id" : kind === "business" ? "business_id" : "deal_id";
-    if (saved.has(key)) {
-      await supabase.from(table).delete().eq("user_id", profile.id).eq(column, id);
-      setSaved(prev => { const next = new Set(prev); next.delete(key); return next; });
-    } else {
-      await supabase.from(table).insert({ user_id: profile.id, [column]: id });
-      setSaved(prev => new Set(prev).add(key));
-    }
-  }
+ return <div className="app-shell">
+  <header className="topbar"><div className="brand-row"><div className="brand">Jordan Ranch & Tamarron</div><button className="community-pill">{communityLabel(profile.community)}</button></div><div className="counter-card"><div className="counter-main">{residentCount.total.toLocaleString()} Verified Residents</div><div className="counter-sub">Jordan Ranch {residentCount.jordan.toLocaleString()} · Tamarron {residentCount.tamarron.toLocaleString()}</div></div></header>
 
-  async function claimDeal(id:string) {
-    const supabase = createClient();
-    const { error } = await supabase.from("deal_claims").upsert({ deal_id:id, user_id:profile.id }, { onConflict:"deal_id,user_id", ignoreDuplicates:true });
-    if (!error) setClaimed(prev => new Set(prev).add(id));
-  }
+  {tab==="home"&&<main className="content"><section className="section"><div className="quick-grid"><button className="quick-card" onClick={()=>router.push("/coming-soon")}><Building2 size={21}/><span className="quick-label">Coming Soon</span></button><button className="quick-card" onClick={()=>router.push("/events")}><CalendarDays size={21}/><span className="quick-label">Events</span></button><button className="quick-card" onClick={()=>router.push("/marketplace/new")}><PlusCircle size={21}/><span className="quick-label">Sell Item</span></button><button className="quick-card" onClick={()=>setTab("business")}><Store size={21}/><span className="quick-label">Find Business</span></button></div></section>
+   <section className="section"><div className="section-head"><div className="section-title">Around the Communities</div></div>
+    {updates.slice(0,3).map(u=><article className="card" key={u.id}><div className="card-body"><div className="eyebrow">{u.category.replace("_"," ")}</div><div className="card-title">{u.title}</div>{u.body&&<div className="card-copy">{u.body}</div>}<div className="meta"><span>{new Date(u.published_at).toLocaleDateString()}</span></div></div></article>)}
+    {events.slice(0,2).map(e=><article className="card" key={e.id}><div className="card-body"><span className="badge"><CalendarDays size={13}/> Event</span><div className="card-title">{e.title}</div>{e.description&&<div className="card-copy">{e.description}</div>}<div className="meta"><span>{new Date(e.starts_at).toLocaleString()}</span>{e.location&&<span><MapPin size={12}/> {e.location}</span>}</div></div></article>)}
+    {updates.length===0&&events.length===0&&<article className="card"><div className="card-body"><div className="eyebrow">Community</div><div className="card-title">Jordan Ranch & Tamarron resident network</div><div className="card-copy">New neighborhood updates and events will appear here as they are published.</div></div></article>}
+    {listings.slice(0,2).map(l=><article className="card" key={l.id} onClick={()=>router.push(`/marketplace/${l.id}`)}>{l.image_urls[0]?<div className="media-placeholder" style={{backgroundImage:`url(${l.image_urls[0]})`,backgroundSize:"cover",backgroundPosition:"center"}}/>:<div className="media-placeholder">Marketplace photo</div>}<div className="card-body"><span className="badge">Marketplace</span><div className="card-title">{l.title}{l.price!==null?` · $${Number(l.price).toLocaleString()}`:""}</div><div className="meta"><span><MapPin size={12}/> {communityLabel(l.community)}</span><span><Eye size={12}/> {l.view_count} views</span></div></div></article>)}
+    {homeAds.slice(0,3).map(a=><AdCard ad={a} key={a.id}/>)}
+    {comingSoon.slice(0,2).map(a=><article className="card" key={`soon-${a.id}`}><div className="card-body"><div className="eyebrow">Coming Soon</div><div className="card-title">{a.headline}</div>{a.body&&<div className="card-copy">{a.body}</div>}</div></article>)}
+   </section></main>}
 
-  async function adEvent(adId:string, event:"video_play"|"click") {
-    const supabase = createClient();
-    await supabase.rpc("record_ad_event", { p_ad_id:adId, p_event:event });
-  }
+  {tab==="marketplace"&&<main className="content"><input className="search" placeholder="Search Marketplace" value={marketplaceQuery} onChange={e=>setMarketplaceQuery(e.target.value)}/><div className="section-head" style={{marginTop:14}}><div className="section-title">Resident Marketplace</div><button className="section-link" onClick={()=>router.push("/marketplace/new")}>+ Create listing</button></div>{filteredListings.length===0?<article className="card"><div className="card-body"><div className="card-title">No matching listings</div><div className="card-copy">Try another search or create a listing.</div></div></article>:filteredListings.map(l=><article className="card" key={l.id}>{l.image_urls[0]?<div className="media-placeholder" style={{backgroundImage:`url(${l.image_urls[0]})`,backgroundSize:"cover",backgroundPosition:"center"}}/>:<div className="media-placeholder">Listing photo</div>}<div className="card-body"><div className="card-title">{l.title}{l.price!==null?` · $${Number(l.price).toLocaleString()}`:""}</div><div className="meta"><span><ShieldCheck size={12}/> Verified resident</span><span>{communityLabel(l.community)}</span><span><Eye size={12}/> {l.view_count} views</span></div><div className="cta-row"><button className="btn-primary" onClick={()=>router.push(`/marketplace/${l.id}`)}>View Listing</button><button className="btn-secondary" onClick={()=>toggleSave("marketplace",l.id)}><Bookmark size={16}/></button></div></div></article>)}</main>}
 
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
+  {tab==="business"&&<main className="content"><input className="search" placeholder="What local business are you looking for?" value={businessQuery} onChange={e=>setBusinessQuery(e.target.value)}/><div className="category-scroll" style={{marginTop:10}}>{categories.map(c=><button className="category-chip" key={c} onClick={()=>setBusinessCategory(c)} aria-pressed={businessCategory===c}>{c}</button>)}</div><section className="business-cta"><h3>Own a local business?</h3><p>Get noticed by verified Jordan Ranch & Tamarron residents with image ads, video ads, resident deals and featured placement.</p><button className="btn-primary" onClick={()=>router.push("/advertise")}>Advertise Your Business</button></section>{localAds.length>0&&<><div className="section-head"><div className="section-title">Sponsored Businesses</div></div>{localAds.slice(0,4).map(a=><AdCard ad={a} key={`local-${a.id}`}/>)}</>}<div className="section-head"><div className="section-title">Local Businesses</div></div>{filteredBusinesses.length===0?<article className="card"><div className="card-body"><div className="card-title">No matching businesses</div><div className="card-copy">Try another category or search.</div></div></article>:filteredBusinesses.map(b=><article className="card" key={b.id}><div className="card-body"><div className="card-title">{b.name}</div><div className="card-copy">{b.category}{b.description?` · ${b.description}`:""}</div><div className="meta"><span>{Number(b.average_rating).toFixed(1)} ★ · {b.rating_count} ratings</span><span><Eye size={12}/> {b.profile_view_count} profile views</span></div><div className="cta-row"><button className="btn-primary" onClick={()=>router.push(`/business/${b.id}`)}>View Business</button><button className="btn-secondary" onClick={()=>toggleSave("business",b.id)}><Bookmark size={16}/></button></div></div></article>)}</main>}
 
-  function openAdBusiness(ad:Ad) {
-    void adEvent(ad.id, "click");
-    if (ad.businesses?.id) router.push(`/business/${ad.businesses.id}`);
-  }
+  {tab==="deals"&&<main className="content"><div className="section-head"><div className="section-title">Resident-Only Deals</div><span className="section-link">Verified access</span></div>{deals.length===0?<article className="card"><div className="card-body"><div className="card-title">No active deals yet</div><div className="card-copy">Local business offers will appear here after approval.</div></div></article>:deals.map(d=><article className="card" key={d.id}><div className="card-body"><span className="badge"><BadgePercent size={13}/> Resident Deal</span><div className="card-title">{d.title} · {d.businesses?.name}</div>{d.description&&<div className="card-copy">{d.description}</div>}<div className="meta"><span><Eye size={12}/> {d.view_count} views</span><span>{d.claim_count} claims</span><span>Expires {new Date(d.expires_at).toLocaleDateString()}</span></div><div className="cta-row"><button className="btn-primary" onClick={()=>claimDeal(d.id)} disabled={claimed.has(d.id)}>{claimed.has(d.id)?"Claimed":"Claim Deal"}</button><button className="btn-secondary" onClick={()=>toggleSave("deal",d.id)}>Save</button></div></div></article>)}</main>}
 
-  const AdCard = ({ ad }:{ad:Ad}) => (
-    <article className="card">
-      {ad.media_urls[0] ? (
-        ad.format === "video" ? <video className="ad-video" src={ad.media_urls[0]} autoPlay muted loop playsInline onPlay={() => void adEvent(ad.id, "video_play")} /> :
-        <div className="media-placeholder" style={{ backgroundImage:`url(${ad.media_urls[0]})`, backgroundSize:"cover", backgroundPosition:"center" }} />
-      ) : <div className="media-placeholder">{ad.format === "video" && <Play size={34} />} Sponsored media</div>}
-      <div className="card-body">
-        <span className="badge sponsored">Sponsored</span>
-        <div className="card-title">{ad.headline}</div>
-        {ad.body && <div className="card-copy">{ad.body}</div>}
-        <div className="meta"><span>{ad.businesses?.name}</span><span><Eye size={12}/> {ad.impression_count} views</span>{ad.format === "video" && <span>{ad.video_play_count} video plays</span>}</div>
-        {ad.businesses?.id && <div className="cta-row"><button className="btn-primary" onClick={() => openAdBusiness(ad)}>View Business</button></div>}
-      </div>
-    </article>
-  );
+  {tab==="profile"&&<main className="content"><section className="card profile-card">{profile.profile_photo_url?<img className="avatar-photo" src={profile.profile_photo_url} alt="Profile"/>:<div className="avatar">{profile.first_name[0]}{profile.last_initial}</div>}<div className="profile-name">{profile.first_name} {profile.last_initial}.</div><div className="profile-detail">✓ Verified {communityLabel(profile.community)} Resident</div>{profile.profession&&<div className="profile-detail">Profession: {profile.profession}</div>}{profile.business_name&&<div className="profile-detail">Business: {profile.business_name}</div>}<div className="profile-detail">Member since {new Date(profile.member_since).toLocaleDateString(undefined,{month:"long",year:"numeric"})}</div><div className="private-note"><strong>Privacy:</strong> Your residential address is used for verification only and is never displayed to other residents.</div></section><section className="section"><div className="section-title" style={{marginBottom:10}}>My Private Content</div><button className="card profile-link" onClick={()=>router.push("/profile/saved")}>Saved Content</button><button className="card profile-link" onClick={()=>router.push("/profile/listings")}>My Marketplace Listings</button><button className="card profile-link" onClick={()=>router.push("/profile/edit")}>Edit Profile</button><button className="card profile-link" onClick={()=>router.push("/verify-residency")}>Account & Verification</button><button className="btn-secondary" style={{width:"100%"}} onClick={signOut}><LogOut size={16}/> Sign out</button></section></main>}
 
-  return <div className="app-shell">
-    <header className="topbar">
-      <div className="brand-row"><div className="brand">Jordan Ranch & Tamarron</div><button className="community-pill">{communityLabel(profile.community)}</button></div>
-      <div className="counter-card"><div className="counter-main">{residentCount.total.toLocaleString()} Verified Residents</div><div className="counter-sub">Jordan Ranch {residentCount.jordan.toLocaleString()} · Tamarron {residentCount.tamarron.toLocaleString()}</div></div>
-    </header>
-
-    {tab === "home" && <main className="content">
-      <section className="section"><div className="quick-grid">
-        <button className="quick-card" onClick={() => router.push("/coming-soon")}><Building2 size={21}/><span className="quick-label">Coming Soon</span></button>
-        <button className="quick-card" onClick={() => router.push("/events")}><CalendarDays size={21}/><span className="quick-label">Events</span></button>
-        <button className="quick-card" onClick={() => router.push("/marketplace/new")}><PlusCircle size={21}/><span className="quick-label">Sell Item</span></button>
-        <button className="quick-card" onClick={() => setTab("business")}><Store size={21}/><span className="quick-label">Find Business</span></button>
-      </div></section>
-      <section className="section">
-        <div className="section-head"><div className="section-title">Around the Communities</div></div>
-        <article className="card"><div className="card-body"><div className="eyebrow">Community Update</div><div className="card-title">Welcome to the private Jordan Ranch & Tamarron resident network</div><div className="card-copy">Marketplace, local businesses, resident-only deals and neighborhood information without comments or likes.</div></div></article>
-        {listings.slice(0,2).map(l => <article className="card" key={l.id} onClick={() => router.push(`/marketplace/${l.id}`)}>{l.image_urls[0] ? <div className="media-placeholder" style={{backgroundImage:`url(${l.image_urls[0]})`,backgroundSize:"cover",backgroundPosition:"center"}}/> : <div className="media-placeholder">Marketplace photo</div>}<div className="card-body"><span className="badge">Marketplace</span><div className="card-title">{l.title}{l.price !== null ? ` · $${Number(l.price).toLocaleString()}` : ""}</div><div className="meta"><span><MapPin size={12}/> {communityLabel(l.community)}</span><span><Eye size={12}/> {l.view_count} views</span></div></div></article>)}
-        {homeAds.slice(0,3).map(ad => <AdCard ad={ad} key={ad.id}/>)}
-        {comingSoon.slice(0,2).map(ad => <article className="card" key={`soon-${ad.id}`}><div className="card-body"><div className="eyebrow">Coming Soon</div><div className="card-title">{ad.headline}</div>{ad.body && <div className="card-copy">{ad.body}</div>}</div></article>)}
-      </section>
-    </main>}
-
-    {tab === "marketplace" && <main className="content">
-      <input className="search" placeholder="Search Marketplace"/>
-      <div className="section-head" style={{marginTop:14}}><div className="section-title">Resident Marketplace</div><button className="section-link" onClick={() => router.push("/marketplace/new")}>+ Create listing</button></div>
-      {listings.length === 0 ? <article className="card"><div className="card-body"><div className="card-title">No listings yet</div><div className="card-copy">Be one of the first verified residents to list an item.</div></div></article> : listings.map(l => <article className="card" key={l.id}>{l.image_urls[0] ? <div className="media-placeholder" style={{backgroundImage:`url(${l.image_urls[0]})`,backgroundSize:"cover",backgroundPosition:"center"}}/> : <div className="media-placeholder">Listing photo</div>}<div className="card-body"><div className="card-title">{l.title}{l.price !== null ? ` · $${Number(l.price).toLocaleString()}` : ""}</div><div className="meta"><span><ShieldCheck size={12}/> Verified resident</span><span>{communityLabel(l.community)}</span><span><Eye size={12}/> {l.view_count} views</span></div><div className="cta-row"><button className="btn-primary" onClick={() => router.push(`/marketplace/${l.id}`)}>View Listing</button><button className="btn-secondary" onClick={() => toggleSave("marketplace", l.id)}><Bookmark size={16}/></button></div></div></article>)}
-    </main>}
-
-    {tab === "business" && <main className="content">
-      <input className="search" placeholder="What local business are you looking for?"/>
-      <section className="business-cta"><h3>Own a local business?</h3><p>Get noticed by verified Jordan Ranch & Tamarron residents with image ads, video ads, resident deals and featured placement.</p><button className="btn-primary" onClick={() => router.push("/advertise")}>Advertise Your Business</button></section>
-      {localAds.length > 0 && <><div className="section-head"><div className="section-title">Sponsored Businesses</div></div>{localAds.slice(0,4).map(ad => <AdCard ad={ad} key={`local-${ad.id}`}/>)}</>}
-      <div className="section-head"><div className="section-title">Local Businesses</div></div>
-      {businesses.length === 0 ? <article className="card"><div className="card-body"><div className="card-title">Business directory is opening soon</div></div></article> : businesses.map(b => <article className="card" key={b.id}><div className="card-body"><div className="card-title">{b.name}</div><div className="card-copy">{b.category}{b.description ? ` · ${b.description}` : ""}</div><div className="meta"><span>{Number(b.average_rating).toFixed(1)} ★ · {b.rating_count} ratings</span><span><Eye size={12}/> {b.profile_view_count} profile views</span></div><div className="cta-row"><button className="btn-primary" onClick={() => router.push(`/business/${b.id}`)}>View Business</button><button className="btn-secondary" onClick={() => toggleSave("business", b.id)}><Bookmark size={16}/></button></div></div></article>)}
-    </main>}
-
-    {tab === "deals" && <main className="content">
-      <div className="section-head"><div className="section-title">Resident-Only Deals</div><span className="section-link">Verified access</span></div>
-      {deals.length === 0 ? <article className="card"><div className="card-body"><div className="card-title">No active deals yet</div><div className="card-copy">Local business offers will appear here after approval.</div></div></article> : deals.map(d => <article className="card" key={d.id}><div className="card-body"><span className="badge"><BadgePercent size={13}/> Resident Deal</span><div className="card-title">{d.title} · {d.businesses?.name}</div>{d.description && <div className="card-copy">{d.description}</div>}<div className="meta"><span><Eye size={12}/> {d.view_count} views</span><span>{d.claim_count} claims</span><span>Expires {new Date(d.expires_at).toLocaleDateString()}</span></div><div className="cta-row"><button className="btn-primary" onClick={() => claimDeal(d.id)} disabled={claimed.has(d.id)}>{claimed.has(d.id) ? "Claimed" : "Claim Deal"}</button><button className="btn-secondary" onClick={() => toggleSave("deal", d.id)}>Save</button></div></div></article>)}
-    </main>}
-
-    {tab === "profile" && <main className="content">
-      <section className="card profile-card">{profile.profile_photo_url ? <img className="avatar-photo" src={profile.profile_photo_url} alt="Profile"/> : <div className="avatar">{profile.first_name[0]}{profile.last_initial}</div>}<div className="profile-name">{profile.first_name} {profile.last_initial}.</div><div className="profile-detail">✓ Verified {communityLabel(profile.community)} Resident</div>{profile.profession && <div className="profile-detail">Profession: {profile.profession}</div>}{profile.business_name && <div className="profile-detail">Business: {profile.business_name}</div>}<div className="profile-detail">Member since {new Date(profile.member_since).toLocaleDateString(undefined,{month:"long",year:"numeric"})}</div><div className="private-note"><strong>Privacy:</strong> Your residential address is used for verification only and is never displayed to other residents.</div></section>
-      <section className="section"><div className="section-title" style={{marginBottom:10}}>My Private Content</div><button className="card profile-link" onClick={() => router.push("/profile/saved")}>Saved Content</button><button className="card profile-link" onClick={() => router.push("/profile/listings")}>My Marketplace Listings</button><button className="card profile-link" onClick={() => router.push("/profile/edit")}>Edit Profile</button><button className="card profile-link" onClick={() => router.push("/verify-residency")}>Account & Verification</button><button className="btn-secondary" style={{width:"100%"}} onClick={signOut}><LogOut size={16}/> Sign out</button></section>
-    </main>}
-
-    <nav className="bottom-nav"><button className={`nav-btn ${tab === "home" ? "active" : ""}`} onClick={() => setTab("home")}><Home size={20}/>Home</button><button className={`nav-btn ${tab === "marketplace" ? "active" : ""}`} onClick={() => setTab("marketplace")}><ShoppingBag size={20}/>Marketplace</button><button className={`nav-btn ${tab === "business" ? "active" : ""}`} onClick={() => setTab("business")}><Store size={20}/>Local Business</button><button className={`nav-btn ${tab === "deals" ? "active" : ""}`} onClick={() => setTab("deals")}><Tags size={20}/>Deals</button><button className={`nav-btn ${tab === "profile" ? "active" : ""}`} onClick={() => setTab("profile")}><User size={20}/>Profile</button></nav>
-  </div>;
+  <nav className="bottom-nav"><button className={`nav-btn ${tab==="home"?"active":""}`} onClick={()=>setTab("home")}><Home size={20}/>Home</button><button className={`nav-btn ${tab==="marketplace"?"active":""}`} onClick={()=>setTab("marketplace")}><ShoppingBag size={20}/>Marketplace</button><button className={`nav-btn ${tab==="business"?"active":""}`} onClick={()=>setTab("business")}><Store size={20}/>Local Business</button><button className={`nav-btn ${tab==="deals"?"active":""}`} onClick={()=>setTab("deals")}><Tags size={20}/>Deals</button><button className={`nav-btn ${tab==="profile"?"active":""}`} onClick={()=>setTab("profile")}><User size={20}/>Profile</button></nav>
+ </div>;
 }
