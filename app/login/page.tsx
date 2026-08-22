@@ -1,14 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verification") === "submitted") {
+      setNotice("Your residency verification was submitted successfully. Sign in again after approval to access the resident app.");
+    }
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -68,10 +76,11 @@ export default function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link>
+        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
         <span className="badge">Residents Only</span>
         <h1>Welcome back</h1>
         <p className="auth-copy">Sign in to your verified neighborhood account.</p>
+        {notice && <div className="form-success">{notice}</div>}
         <form onSubmit={submit} className="form-stack">
           <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
           <label>Password<input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
