@@ -33,6 +33,7 @@ export default function VerifyResidencyPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -180,6 +181,35 @@ export default function VerifyResidencyPage() {
     setLoading(false);
   }
 
+  async function continueAfterSubmission() {
+    setContinuing(true);
+    setError("");
+    const supabase = createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData.user;
+
+    if (!user) {
+      router.replace("/login?verification=submitted");
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("verification_status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.verification_status === "verified") {
+      router.replace("/");
+      router.refresh();
+      return;
+    }
+
+    await supabase.auth.signOut();
+    router.replace("/login?verification=submitted");
+    router.refresh();
+  }
+
   return (
     <main className="auth-page">
       <section className="auth-card wide">
@@ -230,7 +260,12 @@ export default function VerifyResidencyPage() {
           {message && <div className="form-success">{message}</div>}
           <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
         </form>
-        {message && <Link href="/" className="auth-foot">Return to Home →</Link>}
+
+        {message && (
+          <button type="button" className="btn-secondary" onClick={continueAfterSubmission} disabled={continuing} style={{ marginTop: 12, width: "100%" }}>
+            {continuing ? "Checking status…" : "Continue"}
+          </button>
+        )}
       </section>
     </main>
   );
