@@ -18,13 +18,23 @@ export default async function Page() {
 
   if (!profile || profile.verification_status !== "verified") redirect("/verify-residency");
 
-  const [totalResult, jordanResult, tamarronResult, listingsResult, businessesResult, adsResult, dealsResult] = await Promise.all([
+  const [
+    totalResult,
+    jordanResult,
+    tamarronResult,
+    listingsResult,
+    businessesResult,
+    homeAdsResult,
+    localAdsResult,
+    dealsResult,
+  ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified"),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified").eq("community", "jordan_ranch"),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified").eq("community", "tamarron"),
     supabase.from("marketplace_listings").select("id,title,price,community,view_count,image_urls,category,created_at").eq("status", "active").order("created_at", { ascending: false }).limit(30),
     supabase.from("businesses").select("id,name,category,description,average_rating,rating_count,profile_view_count,logo_url,image_urls").order("name").limit(50),
-    supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(12),
+    supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).eq("placement_home", true).order("created_at", { ascending: false }).limit(12),
+    supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).eq("placement_local", true).order("created_at", { ascending: false }).limit(12),
     supabase.from("deals").select("id,title,description,code,view_count,claim_count,expires_at,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
   ]);
 
@@ -43,7 +53,8 @@ export default async function Page() {
       residentCount={{ total: totalResult.count ?? 0, jordan: jordanResult.count ?? 0, tamarron: tamarronResult.count ?? 0 }}
       listings={(listingsResult.data ?? []) as never[]}
       businesses={(businessesResult.data ?? []) as never[]}
-      ads={(adsResult.data ?? []) as never[]}
+      homeAds={(homeAdsResult.data ?? []) as never[]}
+      localAds={(localAdsResult.data ?? []) as never[]}
       deals={(dealsResult.data ?? []) as never[]}
     />
   );
