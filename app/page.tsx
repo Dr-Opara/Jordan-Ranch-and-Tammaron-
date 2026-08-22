@@ -24,8 +24,8 @@ export default async function Page() {
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified").eq("community", "tamarron"),
     supabase.from("marketplace_listings").select("id,title,price,community,view_count,image_urls,category,created_at").eq("status", "active").order("created_at", { ascending: false }).limit(30),
     supabase.from("businesses").select("id,name,category,description,average_rating,rating_count,profile_view_count,logo_url,image_urls").order("name").limit(50),
-    supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(12),
-    supabase.from("deals").select("id,title,description,code,view_count,claim_count,expires_at,businesses(name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
+    supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(12),
+    supabase.from("deals").select("id,title,description,code,view_count,claim_count,expires_at,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
   ]);
 
   return (
