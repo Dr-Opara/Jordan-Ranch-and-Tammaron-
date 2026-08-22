@@ -23,7 +23,7 @@ export default function AdvertisingAdminPage(){
       s.from("deals").select("id,business_id,title,approval_status,is_active,starts_at,expires_at,businesses(name)").eq("approval_status","pending").order("created_at",{ascending:true})
     ]);
     if(b.error||p.error||a.error||d.error)setError(b.error?.message||p.error?.message||a.error?.message||d.error?.message||"Unable to load admin queue");
-    setBusinesses((b.data??[]) as Business[]);setPlans((p.data??[]) as PlanRequest[]);setAds((a.data??[]) as Ad[]);setDeals((d.data??[]) as Deal[]);setLoading(false);
+    setBusinesses((b.data??[]) as Business[]);setPlans((p.data??[]) as unknown as PlanRequest[]);setAds((a.data??[]) as unknown as Ad[]);setDeals((d.data??[]) as unknown as Deal[]);setLoading(false);
   }
   useEffect(()=>{void load();},[]);
 
