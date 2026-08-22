@@ -18,10 +18,36 @@ export default function VerifyResidencyPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.replace("/login");
-      const savedCommunity = data.user?.user_metadata?.community as Community | undefined;
+    supabase.auth.getUser().then(async ({ data }) => {
+      const user = data.user;
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const metadata = user.user_metadata ?? {};
+      const savedCommunity = metadata.community as Community | undefined;
       if (savedCommunity) setCommunity(savedCommunity);
+
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        const firstName = String(metadata.first_name ?? "Resident").trim() || "Resident";
+        const lastInitial = String(metadata.last_initial ?? "R").trim().slice(0, 1).toUpperCase() || "R";
+        await supabase.from("profiles").insert({
+          id: user.id,
+          first_name: firstName,
+          last_initial: lastInitial,
+          community: savedCommunity ?? "jordan_ranch",
+          profession: metadata.profession ?? null,
+          business_name: metadata.business_name ?? null,
+          verification_status: "pending",
+        });
+      }
     });
   }, [router]);
 
@@ -44,7 +70,7 @@ export default function VerifyResidencyPage() {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       evidencePath = `${user.id}/${Date.now()}-${safeName}`;
       const { error: uploadError } = await supabase.storage
-        .from("verification-evidence")
+        .from("verification-documents")
         .upload(evidencePath, file, { upsert: false });
       if (uploadError) {
         setError(uploadError.message);
@@ -70,7 +96,7 @@ export default function VerifyResidencyPage() {
       return;
     }
 
-    await supabase.from("profiles").update({ community }).eq("id", user.id);
+    await supabase.from("profiles").update({ community, verification_status: "pending" }).eq("id", user.id);
     setMessage("Verification submitted. Your address and proof are private and are never displayed to other residents.");
     setLoading(false);
   }
@@ -86,7 +112,7 @@ export default function VerifyResidencyPage() {
           <label>Community<select value={community} onChange={(e) => setCommunity(e.target.value as Community)}><option value="jordan_ranch">Jordan Ranch</option><option value="tamarron">Tamarron</option></select></label>
           <label>Residential address<input required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" autoComplete="street-address" /></label>
           <label>Proof of residency <span className="optional">optional during beta</span><input type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-          <div className="private-note"><strong>Privacy:</strong> Verification documents are stored in a private bucket. They do not appear on your resident profile.</div>
+          <div className="private-note"><strong>Privacy:</strong> Verification documents are stored privately. They never appear on your resident profile.</div>
           {error && <div className="form-error">{error}</div>}
           {message && <div className="form-success">{message}</div>}
           <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
