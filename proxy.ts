@@ -15,6 +15,7 @@ const authProtectedPrefixes = [
   "/advertise/campaign",
   "/advertise/deal",
   "/advertise/plans",
+  "/advertise/profile",
   "/admin",
 ];
 
