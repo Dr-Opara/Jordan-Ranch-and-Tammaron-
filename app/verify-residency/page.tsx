@@ -9,6 +9,7 @@ type Community = "jordan_ranch" | "tamarron";
 type ResidentType = "property_owner" | "renter_non_owner";
 type MatchResult = {
   matched: boolean;
+  autoApproved?: boolean;
   status: string;
   confidence?: number;
   quickRefId?: string | null;
@@ -55,9 +56,14 @@ export default function VerifyResidencyPage() {
 
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, verification_status")
         .eq("id", user.id)
         .maybeSingle();
+
+      if (existingProfile?.verification_status === "verified") {
+        router.replace("/");
+        return;
+      }
 
       if (!existingProfile) {
         await supabase.from("profiles").insert({
@@ -91,6 +97,9 @@ export default function VerifyResidencyPage() {
       const result = await response.json() as MatchResult & { error?: string };
       if (!response.ok) throw new Error(result.error || "Unable to check public property data.");
       setMatch(result);
+      if (result.autoApproved) {
+        setMessage("Verified. Your property ownership, address and community matched Fort Bend CAD records. You now have resident access.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to check public property data.");
     } finally {
@@ -102,6 +111,13 @@ export default function VerifyResidencyPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
+
+    if (residentType === "property_owner" && match?.autoApproved) {
+      router.replace("/");
+      router.refresh();
+      return;
+    }
+
     setMessage("");
 
     if (residentType === "property_owner" && !match) {
@@ -138,7 +154,7 @@ export default function VerifyResidencyPage() {
     }
 
     const method = residentType === "property_owner"
-      ? (match?.matched ? "fbcad_match" : "manual_owner_review")
+      ? "manual_owner_review"
       : "renter_document";
 
     const { error: verificationError } = await supabase.from("resident_verifications").upsert(
@@ -169,12 +185,8 @@ export default function VerifyResidencyPage() {
       return;
     }
 
-    await supabase.from("profiles").update({ community, verification_status: "pending" }).eq("id", user.id);
-
-    if (residentType === "property_owner" && match?.matched) {
-      setMessage("Property record match found. Your verification has been submitted for expedited approval.");
-    } else if (residentType === "property_owner") {
-      setMessage("The property address was found, but the ownership match needs review. Your information remains private.");
+    if (residentType === "property_owner") {
+      setMessage("The property record did not fully satisfy automatic verification, so your submission will be reviewed.");
     } else {
       setMessage("Renter/non-owner verification submitted. Your proof of address is private and will be used only for residency verification.");
     }
@@ -199,9 +211,8 @@ export default function VerifyResidencyPage() {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.verification_status === "verified") {
-      router.replace("/");
-      router.refresh();
+    if (profile?.verification_status === "verified" || match?.autoApproved) {
+      window.location.assign("/");
       return;
     }
 
@@ -220,21 +231,21 @@ export default function VerifyResidencyPage() {
 
         <form onSubmit={submit} className="form-stack">
           <label>Community
-            <select value={community} onChange={(e) => { setCommunity(e.target.value as Community); setMatch(null); }}>
+            <select value={community} onChange={(e) => { setCommunity(e.target.value as Community); setMatch(null); setMessage(""); }}>
               <option value="jordan_ranch">Jordan Ranch</option>
               <option value="tamarron">Tamarron</option>
             </select>
           </label>
 
           <label>Residency type
-            <select value={residentType} onChange={(e) => { setResidentType(e.target.value as ResidentType); setMatch(null); setFile(null); setError(""); }}>
+            <select value={residentType} onChange={(e) => { setResidentType(e.target.value as ResidentType); setMatch(null); setFile(null); setError(""); setMessage(""); }}>
               <option value="property_owner">Property Owner</option>
               <option value="renter_non_owner">Resident Renter / Non-owner</option>
             </select>
           </label>
 
           <label>Full residential address
-            <input required value={address} onChange={(e) => { setAddress(e.target.value); setMatch(null); }} placeholder="Street address" autoComplete="street-address" />
+            <input required value={address} onChange={(e) => { setAddress(e.target.value); setMatch(null); setMessage(""); }} placeholder="Street address" autoComplete="street-address" />
           </label>
 
           {residentType === "property_owner" ? (
@@ -242,7 +253,7 @@ export default function VerifyResidencyPage() {
               <div className="private-note"><strong>Property Owner:</strong> We will compare your full residential address and private legal name with Fort Bend CAD public property records.</div>
               <button type="button" className="btn-secondary" onClick={checkPublicRecord} disabled={checking || !address.trim()}>{checking ? "Checking Fort Bend records…" : "Check Address with Fort Bend CAD"}</button>
               {match && <div className={match.matched ? "form-success" : "private-note"}>
-                <strong>{match.matched ? "Public record match found." : "Ownership match needs review."}</strong> {match.message}
+                <strong>{match.autoApproved ? "Verified resident." : match.matched ? "Public record match found." : "Ownership match needs review."}</strong> {match.message}
               </div>}
             </>
           ) : (
@@ -258,12 +269,15 @@ export default function VerifyResidencyPage() {
           <div className="private-note"><strong>Privacy:</strong> After verification, other residents see only your first name and last initial. Your full last name, exact address and verification documents remain private.</div>
           {error && <div className="form-error">{error}</div>}
           {message && <div className="form-success">{message}</div>}
-          <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
+
+          {!match?.autoApproved && (
+            <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
+          )}
         </form>
 
-        {message && (
-          <button type="button" className="btn-secondary" onClick={continueAfterSubmission} disabled={continuing} style={{ marginTop: 12, width: "100%" }}>
-            {continuing ? "Checking status…" : "Continue"}
+        {(message || match?.autoApproved) && (
+          <button type="button" className="btn-primary" onClick={continueAfterSubmission} disabled={continuing} style={{ marginTop: 12, width: "100%" }}>
+            {continuing ? "Opening app…" : match?.autoApproved ? "Continue to App" : "Continue"}
           </button>
         )}
       </section>
