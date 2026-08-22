@@ -2,7 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const residentProtected = new Set(["/"]);
-const authProtectedPrefixes = ["/verify-residency", "/advertise/setup", "/advertise/dashboard", "/advertise/campaign", "/advertise/deal", "/admin"];
+const authProtectedPrefixes = [
+  "/verify-residency",
+  "/marketplace",
+  "/business",
+  "/resident",
+  "/profile",
+  "/advertise/setup",
+  "/advertise/dashboard",
+  "/advertise/campaign",
+  "/advertise/deal",
+  "/admin",
+];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
