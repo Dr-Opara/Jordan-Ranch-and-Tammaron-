@@ -10,7 +10,7 @@ type Community = "jordan_ranch" | "tamarron";
 export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
-  const [lastInitial, setLastInitial] = useState("");
+  const [lastName, setLastName] = useState("");
   const [community, setCommunity] = useState<Community>("jordan_ranch");
   const [profession, setProfession] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -26,6 +26,14 @@ export default function SignupPage() {
     setError("");
     setMessage("");
 
+    const cleanFirst = firstName.trim();
+    const cleanLast = lastName.trim();
+    if (!cleanFirst || !cleanLast) {
+      setError("Enter your full first and last name.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
     const origin = window.location.origin;
     const { data, error } = await supabase.auth.signUp({
@@ -34,8 +42,9 @@ export default function SignupPage() {
       options: {
         emailRedirectTo: `${origin}/auth/callback`,
         data: {
-          first_name: firstName.trim(),
-          last_initial: lastInitial.trim().slice(0, 1).toUpperCase(),
+          first_name: cleanFirst,
+          last_name: cleanLast,
+          last_initial: cleanLast.slice(0, 1).toUpperCase(),
           community,
           profession: profession.trim() || null,
           business_name: businessName.trim() || null,
@@ -61,14 +70,14 @@ export default function SignupPage() {
   return (
     <main className="auth-page">
       <section className="auth-card wide">
-        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link>
+        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
         <span className="badge">Resident Registration</span>
         <h1>Join your community</h1>
-        <p className="auth-copy">Only verified Jordan Ranch and Tamarron residents receive access. Your exact address is collected separately for verification and is never shown on your public profile.</p>
+        <p className="auth-copy">Enter your full legal name for private residency verification. After approval, other residents will only see your first name and last initial.</p>
         <form onSubmit={submit} className="form-stack">
           <div className="form-grid two">
-            <label>First name<input required value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={50} /></label>
-            <label>Last initial<input required value={lastInitial} onChange={(e) => setLastInitial(e.target.value.replace(/[^a-zA-Z]/g, "").slice(0,1))} maxLength={1} /></label>
+            <label>First name<input required value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={60} autoComplete="given-name" /></label>
+            <label>Last name<input required value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={80} autoComplete="family-name" /></label>
           </div>
           <label>Community<select value={community} onChange={(e) => setCommunity(e.target.value as Community)}><option value="jordan_ranch">Jordan Ranch</option><option value="tamarron">Tamarron</option></select></label>
           <div className="form-grid two">
