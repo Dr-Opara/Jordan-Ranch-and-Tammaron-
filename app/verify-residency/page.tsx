@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Community = "jordan_ranch" | "tamarron";
+type ResidentType = "property_owner" | "renter_non_owner";
 type MatchResult = {
   matched: boolean;
   status: string;
@@ -22,6 +23,7 @@ type MatchResult = {
 export default function VerifyResidencyPage() {
   const router = useRouter();
   const [community, setCommunity] = useState<Community>("jordan_ranch");
+  const [residentType, setResidentType] = useState<ResidentType>("property_owner");
   const [address, setAddress] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [legalFirstName, setLegalFirstName] = useState("");
@@ -72,7 +74,7 @@ export default function VerifyResidencyPage() {
 
   async function checkPublicRecord() {
     if (!address.trim()) {
-      setError("Enter your residential address first.");
+      setError("Enter your full residential address first.");
       return;
     }
     setChecking(true);
@@ -101,6 +103,17 @@ export default function VerifyResidencyPage() {
     setError("");
     setMessage("");
 
+    if (residentType === "property_owner" && !match) {
+      setError("Property owners must check the address against Fort Bend CAD before submitting.");
+      setLoading(false);
+      return;
+    }
+    if (residentType === "renter_non_owner" && !file) {
+      setError("Renters and non-owner residents must upload a current proof of address.");
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
     const { data: authData } = await supabase.auth.getUser();
     const user = authData.user;
@@ -123,11 +136,15 @@ export default function VerifyResidencyPage() {
       }
     }
 
-    const method = match?.matched ? "fbcad_match" : file ? "document" : "manual";
+    const method = residentType === "property_owner"
+      ? (match?.matched ? "fbcad_match" : "manual_owner_review")
+      : "renter_document";
+
     const { error: verificationError } = await supabase.from("resident_verifications").upsert(
       {
         user_id: user.id,
         community,
+        resident_type: residentType,
         residential_address: address.trim(),
         evidence_path: evidencePath,
         legal_first_name: legalFirstName || null,
@@ -152,9 +169,14 @@ export default function VerifyResidencyPage() {
     }
 
     await supabase.from("profiles").update({ community, verification_status: "pending" }).eq("id", user.id);
-    setMessage(match?.matched
-      ? "Strong Fort Bend CAD match found and submitted for expedited verification. Your full name, address and public-record match stay private."
-      : "Verification submitted. Your full name, address and any proof are private and are never displayed to other residents.");
+
+    if (residentType === "property_owner" && match?.matched) {
+      setMessage("Property record match found. Your verification has been submitted for expedited approval.");
+    } else if (residentType === "property_owner") {
+      setMessage("The property address was found, but the ownership match needs review. Your information remains private.");
+    } else {
+      setMessage("Renter/non-owner verification submitted. Your proof of address is private and will be used only for residency verification.");
+    }
     setLoading(false);
   }
 
@@ -164,18 +186,46 @@ export default function VerifyResidencyPage() {
         <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
         <span className="badge">Private Residency Verification</span>
         <h1>Verify that you live here</h1>
-        <p className="auth-copy">We first check your address and private legal name against Fort Bend County public property data. Other residents, businesses and advertisers never see this information.</p>
+        <p className="auth-copy">Choose the option that describes your residency. Your full name, address and verification records are private and never appear on your resident profile.</p>
+
         <form onSubmit={submit} className="form-stack">
-          <label>Community<select value={community} onChange={(e) => { setCommunity(e.target.value as Community); setMatch(null); }}><option value="jordan_ranch">Jordan Ranch</option><option value="tamarron">Tamarron</option></select></label>
-          <label>Residential address<input required value={address} onChange={(e) => { setAddress(e.target.value); setMatch(null); }} placeholder="Street address" autoComplete="street-address" /></label>
-          <button type="button" className="btn-secondary" onClick={checkPublicRecord} disabled={checking || !address.trim()}>{checking ? "Checking Fort Bend records…" : "Check Address with Fort Bend CAD"}</button>
+          <label>Community
+            <select value={community} onChange={(e) => { setCommunity(e.target.value as Community); setMatch(null); }}>
+              <option value="jordan_ranch">Jordan Ranch</option>
+              <option value="tamarron">Tamarron</option>
+            </select>
+          </label>
 
-          {match && <div className={match.matched ? "form-success" : "private-note"}>
-            <strong>{match.matched ? "Public record match found." : "Additional proof may be needed."}</strong> {match.message}
-          </div>}
+          <label>Residency type
+            <select value={residentType} onChange={(e) => { setResidentType(e.target.value as ResidentType); setMatch(null); setFile(null); setError(""); }}>
+              <option value="property_owner">Property Owner</option>
+              <option value="renter_non_owner">Resident Renter / Non-owner</option>
+            </select>
+          </label>
 
-          <label>Proof of residency <span className="optional">only needed if public records do not fully match</span><input type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-          <div className="private-note"><strong>Privacy:</strong> Your full last name, address, public-record result and verification documents are private. After verification, your resident profile displays only your first name and last initial.</div>
+          <label>Full residential address
+            <input required value={address} onChange={(e) => { setAddress(e.target.value); setMatch(null); }} placeholder="Street address" autoComplete="street-address" />
+          </label>
+
+          {residentType === "property_owner" ? (
+            <>
+              <div className="private-note"><strong>Property Owner:</strong> We will compare your full residential address and private legal name with Fort Bend CAD public property records.</div>
+              <button type="button" className="btn-secondary" onClick={checkPublicRecord} disabled={checking || !address.trim()}>{checking ? "Checking Fort Bend records…" : "Check Address with Fort Bend CAD"}</button>
+              {match && <div className={match.matched ? "form-success" : "private-note"}>
+                <strong>{match.matched ? "Public record match found." : "Ownership match needs review."}</strong> {match.message}
+              </div>}
+            </>
+          ) : (
+            <>
+              <div className="private-note"><strong>Resident Renter / Non-owner:</strong> Enter your full home address and upload one current document that shows that address.</div>
+              <label>Proof of address
+                <span className="optional"> utility bill, gas/electric bill, internet/Wi-Fi bill, lease, renter&apos;s insurance, or similar current document</span>
+                <input required type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </label>
+            </>
+          )}
+
+          <div className="private-note"><strong>Privacy:</strong> After verification, other residents see only your first name and last initial. Your full last name, exact address and verification documents remain private.</div>
           {error && <div className="form-error">{error}</div>}
           {message && <div className="form-success">{message}</div>}
           <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
