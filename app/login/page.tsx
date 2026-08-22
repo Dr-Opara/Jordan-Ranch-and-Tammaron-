@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,17 +12,57 @@ export default function LoginPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (loading) return;
+
     setLoading(true);
     setError("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
+
+    try {
+      const supabase = createClient();
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Sign in timed out. Please try again.")), 15000),
+      );
+
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+        timeout,
+      ]);
+
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+
+      if (!result.data.session || !result.data.user) {
+        setError("We could not create a sign-in session. Please try again.");
+        return;
+      }
+
+      const accountType = result.data.user.user_metadata?.account_type;
+      if (accountType === "advertiser") {
+        window.location.assign("/advertise/dashboard");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("verification_status")
+        .eq("id", result.data.user.id)
+        .maybeSingle();
+
+      if (profile?.verification_status === "verified") {
+        window.location.assign("/");
+      } else {
+        window.location.assign("/verify-residency");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-    router.replace("/");
-    router.refresh();
   }
 
   return (
