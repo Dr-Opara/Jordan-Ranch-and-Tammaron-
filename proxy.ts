@@ -8,6 +8,8 @@ const authProtectedPrefixes = [
   "/business",
   "/resident",
   "/profile",
+  "/events",
+  "/coming-soon",
   "/advertise/setup",
   "/advertise/dashboard",
   "/advertise/campaign",
