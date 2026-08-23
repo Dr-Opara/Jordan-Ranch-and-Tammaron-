@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const plans = [
-  { name: "Get Listed", price: "$0", text: "Standard Local Business directory presence." },
-  { name: "Get Noticed", price: "$49/mo", text: "Enhanced profile, priority Local placement and resident deals." },
-  { name: "Get Featured", price: "$99/mo", text: "Featured Local placement plus image and video campaigns." },
-  { name: "Get Everywhere", price: "$199/mo", text: "Home feed, Local Business, Deals, video and Coming Soon placement." },
+  { name: "Get Listed", price: "$99/mo", text: "Standard Local Business directory listing." },
+  { name: "Get Noticed", price: "$199/mo", text: "Enhanced profile, priority Local Business placement and resident deals." },
+  { name: "Get Featured", price: "$299/mo", text: "Priority Local Business placement plus image and video campaigns." },
+  { name: "Get Everywhere", price: "$399/mo", text: "Home feed, Local Business, Deals, image/video campaigns and Coming Soon placement." },
 ];
 
 export default function AdvertisePage() {
@@ -14,7 +14,7 @@ export default function AdvertisePage() {
         <Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link>
         <span className="badge sponsored">For Local Businesses</span>
         <h1>Get noticed by residents</h1>
-        <p className="auth-copy">Reach verified Jordan Ranch and Tamarron residents with business profiles, image ads, short video ads, resident-only deals and featured placement. Advertisers do not receive access to the private resident marketplace.</p>
+        <p className="auth-copy">Reach verified Jordan Ranch and Tamarron residents with paid business listings, priority placement, resident deals, image/video advertising and Coming Soon promotion. Advertisers never receive access to the private resident marketplace.</p>
         <div className="plan-grid">
           {plans.map((plan) => (
             <article className="plan-card" key={plan.name}>
@@ -24,6 +24,7 @@ export default function AdvertisePage() {
             </article>
           ))}
         </div>
+        <div className="private-note" style={{marginTop:16}}>All business listings are reviewed before they become visible to residents. Payment is collected securely through Stripe; this app does not store card or bank-card numbers.</div>
         <div className="cta-row" style={{ marginTop: 18 }}>
           <Link className="btn-primary" href="/advertise/signup" style={{ textAlign: "center", textDecoration: "none" }}>Create Business Account</Link>
           <Link className="btn-secondary" href="/login" style={{ textAlign: "center", textDecoration: "none" }}>Business Sign In</Link>
