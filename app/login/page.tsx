@@ -16,6 +16,9 @@ export default function LoginPage() {
     if (params.get("verification") === "submitted") {
       setNotice("Your residency verification was submitted successfully. Sign in again after approval to access the resident app.");
     }
+    if (params.get("error") === "confirmation_failed") {
+      setError("We could not confirm that email link. Please request a new confirmation or try signing in again.");
+    }
   }, []);
 
   async function submit(event: FormEvent) {
@@ -84,6 +87,7 @@ export default function LoginPage() {
         <form onSubmit={submit} className="form-stack">
           <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
           <label>Password<input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
+          <div className="auth-foot" style={{ marginTop: -4 }}><Link href="/forgot-password">Forgot password?</Link></div>
           {error && <div className="form-error">{error}</div>}
           <button className="btn-primary" disabled={loading}>{loading ? "Signing in…" : "Sign In"}</button>
         </form>
