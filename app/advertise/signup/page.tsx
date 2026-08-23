@@ -17,12 +17,13 @@ export default function AdvertiserSignupPage() {
     event.preventDefault();
     setLoading(true); setError(""); setMessage("");
     const supabase = createClient();
-    const origin = window.location.origin;
+    const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+    const siteUrl = configured || window.location.origin;
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=/advertise/setup`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/advertise/setup`,
         data: { account_type: "advertiser" },
       },
     });
