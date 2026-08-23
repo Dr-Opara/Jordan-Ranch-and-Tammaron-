@@ -6,14 +6,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const categories=["Restaurants","Medical","Dental","Beauty","Home Services","Fitness","Childcare","Automotive","Shopping","Real Estate","Professional Services","Pet Services","Entertainment","Education","Other"];
+const initialForm={name:"",legal_business_name:"",category:"Restaurants",description:"",contact_first_name:"",contact_last_name:"",contact_title:"",contact_email:"",business_email:"",phone:"",website_url:"",address_line1:"",address_line2:"",city:"",state:"TX",postal_code:"",service_area:"Jordan Ranch & Tamarron",year_established:"",instagram_url:"",facebook_url:"",license_type:"",license_number:""};
+type FormState=typeof initialForm;
 
 export default function BusinessSetupPage() {
   const router = useRouter();
-  const [form,setForm]=useState({name:"",legal_business_name:"",category:"Restaurants",description:"",contact_first_name:"",contact_last_name:"",contact_title:"",contact_email:"",business_email:"",phone:"",website_url:"",address_line1:"",address_line2:"",city:"",state:"TX",postal_code:"",service_area:"Jordan Ranch & Tamarron",year_established:"",instagram_url:"",facebook_url:"",license_type:"",license_number:""});
+  const [form,setForm]=useState<FormState>(initialForm);
   const [terms,setTerms]=useState(false);const [privacy,setPrivacy]=useState(false);const [error,setError]=useState("");const [loading,setLoading]=useState(false);
-  const update=(key:string,value:string)=>setForm(p=>({...p,[key]:value}));
+  const update=(key:keyof FormState,value:string)=>setForm(p=>({...p,[key]:value}));
 
-  useEffect(()=>{(async()=>{const s=createClient();const {data}=await s.auth.getUser();if(!data.user){router.replace("/advertise/signup");return;}const {data:b}=await s.from("businesses").select("*").eq("owner_user_id",data.user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();if(b){setForm(p=>({...p,...Object.fromEntries(Object.keys(p).map(k=>[k,b[k]??p[k]])),year_established:b.year_established?String(b.year_established):""}));}})();},[router]);
+  useEffect(()=>{(async()=>{const s=createClient();const {data}=await s.auth.getUser();if(!data.user){router.replace("/advertise/signup");return;}const {data:b}=await s.from("businesses").select("*").eq("owner_user_id",data.user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();if(b){const values=b as Record<string,unknown>;setForm(p=>({...p,...Object.fromEntries(Object.keys(p).map(k=>[k,typeof values[k]==="string"?values[k]:p[k as keyof FormState]])),year_established:b.year_established?String(b.year_established):""} as FormState));}})();},[router]);
 
   async function submit(e:FormEvent){
     e.preventDefault();setError("");if(!terms||!privacy){setError("You must accept the Terms and Privacy Policy before submitting.");return;}setLoading(true);
