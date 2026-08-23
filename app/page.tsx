@@ -33,13 +33,17 @@ export default async function Page() {
     supabase.from("community_events").select("id,title,description,location,starts_at,ends_at").gte("starts_at", new Date().toISOString()).order("starts_at", { ascending: true }).limit(8),
   ]);
 
-  const residentPosts = ((residentPostsResult.data ?? []) as Array<{id:string;title:string;body:string;category:string;location_text:string|null;created_at:string;profiles:{first_name:string;last_initial:string}|null}>).map((post)=>({
-    id:`resident-${post.id}`,
-    title:post.title,
-    body:`${post.body}${post.location_text?` · ${post.location_text}`:""}${post.profiles?` · Shared by ${post.profiles.first_name} ${post.profiles.last_initial}.`:""}`,
-    category:`resident ${post.category}`,
-    published_at:post.created_at,
-  }));
+  type ResidentPostRow={id:string;title:string;body:string;category:string;location_text:string|null;created_at:string;profiles:Array<{first_name:string;last_initial:string}>|null};
+  const residentPosts = ((residentPostsResult.data ?? []) as unknown as ResidentPostRow[]).map((post)=>{
+    const author=Array.isArray(post.profiles)?post.profiles[0]:null;
+    return {
+      id:`resident-${post.id}`,
+      title:post.title,
+      body:`${post.body}${post.location_text?` · ${post.location_text}`:""}${author?` · Shared by ${author.first_name} ${author.last_initial}.`:""}`,
+      category:`resident ${post.category}`,
+      published_at:post.created_at,
+    };
+  });
 
   const combinedUpdates = [...((updatesResult.data ?? []) as Array<{id:string;title:string;body:string|null;category:string;published_at:string}>), ...residentPosts]
     .sort((a,b)=>new Date(b.published_at).getTime()-new Date(a.published_at).getTime())
