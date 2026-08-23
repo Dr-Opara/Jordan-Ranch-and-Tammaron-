@@ -35,12 +35,13 @@ export default function SignupPage() {
     }
 
     const supabase = createClient();
-    const origin = window.location.origin;
+    const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+    const siteUrl = configured || window.location.origin;
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/verify-residency`,
         data: {
           first_name: cleanFirst,
           last_name: cleanLast,
@@ -48,6 +49,7 @@ export default function SignupPage() {
           community,
           profession: profession.trim() || null,
           business_name: businessName.trim() || null,
+          account_type: "resident",
         },
       },
     });
