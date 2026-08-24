@@ -24,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/contact">Contact & Support</Link>
           </nav>
           <p>JRT.Community is a product of <a href="https://theboringproduct.com/" target="_blank" rel="noopener noreferrer">The Boring Product</a>.</p>
+          <p style={{maxWidth:680,margin:"8px auto"}}>JRT.Community is an independent community application created to connect and unite residents of Jordan Ranch and Tamarron. JRT.Community is not affiliated with, endorsed by, sponsored by, or operated by JordanRanchTexas.com, the Jordan Ranch developer, Tamarron developer, any homeowners association (HOA), property management company, or other official community organization unless expressly stated.</p>
           <p>© {new Date().getFullYear()} Jordan Ranch & Tamarron Residents · JRT.community</p>
         </footer>
       </body>
