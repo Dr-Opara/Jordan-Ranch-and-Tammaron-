@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Community = "jordan_ranch" | "tamarron";
@@ -17,7 +16,6 @@ const categories = [
 ] as const;
 
 export default function NewCommunityPostPage() {
-  const router = useRouter();
   const [community, setCommunity] = useState<Community>("jordan_ranch");
   const [category, setCategory] = useState("community_update");
   const [title, setTitle] = useState("");
@@ -25,18 +23,27 @@ export default function NewCommunityPostPage() {
   const [location, setLocation] = useState("");
   const [both, setBoth] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     void (async () => {
       const s = createClient();
       const { data: auth } = await s.auth.getUser();
-      if (!auth.user) { router.replace("/login"); return; }
-      const { data: profile } = await s.from("profiles").select("community,verification_status").eq("id", auth.user.id).maybeSingle();
-      if (!profile || profile.verification_status !== "verified") { router.replace("/verify-residency"); return; }
-      setCommunity(profile.community as Community);
+      if (!auth.user) { window.location.replace("/login"); return; }
+
+      const [{ data: profile }, { data: verification }] = await Promise.all([
+        s.from("profiles").select("community,verification_status").eq("id", auth.user.id).maybeSingle(),
+        s.from("resident_verifications").select("community,status").eq("user_id", auth.user.id).maybeSingle(),
+      ]);
+
+      const verified = profile?.verification_status === "verified" || verification?.status === "verified";
+      if (!verified) { window.location.replace("/"); return; }
+
+      setCommunity((profile?.community ?? verification?.community ?? "jordan_ranch") as Community);
+      setCheckingAccess(false);
     })();
-  }, [router]);
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -44,7 +51,7 @@ export default function NewCommunityPostPage() {
     setLoading(true);
     const s = createClient();
     const { data: auth } = await s.auth.getUser();
-    if (!auth.user) { router.replace("/login"); return; }
+    if (!auth.user) { window.location.replace("/login"); return; }
 
     const { error: insertError } = await s.from("resident_posts").insert({
       author_id: auth.user.id,
@@ -63,9 +70,10 @@ export default function NewCommunityPostPage() {
       return;
     }
 
-    router.replace("/");
-    router.refresh();
+    window.location.replace("/");
   }
+
+  if (checkingAccess) return <main className="auth-page"><section className="auth-card">Checking resident access…</section></main>;
 
   return <main className="auth-page"><section className="auth-card wide">
     <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
