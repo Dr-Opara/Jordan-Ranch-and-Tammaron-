@@ -23,6 +23,7 @@ type MatchResult = {
 
 export default function VerifyResidencyPage() {
   const router = useRouter();
+  const [initializing, setInitializing] = useState(true);
   const [community, setCommunity] = useState<Community>("jordan_ranch");
   const [residentType, setResidentType] = useState<ResidentType>("property_owner");
   const [address, setAddress] = useState("");
@@ -39,55 +40,61 @@ export default function VerifyResidencyPage() {
   const [switchingAccount, setSwitchingAccount] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
-      const user = data.user;
-      if (!user) {
-        router.replace("/login");
-        return;
+
+    async function initialize() {
+      try {
+        const { data, error: authError } = await supabase.auth.getUser();
+        if (!active) return;
+        if (authError || !data.user) {
+          router.replace("/login");
+          return;
+        }
+
+        const user = data.user;
+        setUserEmail(user.email ?? "");
+        const metadata = user.user_metadata ?? {};
+        const savedCommunity = metadata.community as Community | undefined;
+        if (savedCommunity) setCommunity(savedCommunity);
+        const firstName = String(metadata.first_name ?? "Resident").trim() || "Resident";
+        const lastName = String(metadata.last_name ?? "").trim();
+        const lastInitial = (lastName || String(metadata.last_initial ?? "R")).slice(0, 1).toUpperCase() || "R";
+        setLegalFirstName(firstName);
+        setLegalLastName(lastName);
+
+        const [{ data: existingProfile }, { data: existingVerification }] = await Promise.all([
+          supabase.from("profiles").select("id, verification_status").eq("id", user.id).maybeSingle(),
+          supabase.from("resident_verifications").select("status").eq("user_id", user.id).maybeSingle(),
+        ]);
+        if (!active) return;
+
+        if (existingProfile?.verification_status === "verified" || existingVerification?.status === "verified") {
+          window.location.replace("/");
+          return;
+        }
+
+        if (!existingProfile) {
+          const { error: profileError } = await supabase.from("profiles").insert({
+            id: user.id,
+            first_name: firstName,
+            last_initial: lastInitial,
+            community: savedCommunity ?? "jordan_ranch",
+            profession: metadata.profession ?? null,
+            business_name: metadata.business_name ?? null,
+            verification_status: "pending",
+          });
+          if (profileError && active) setError(profileError.message);
+        }
+      } catch {
+        if (active) setError("Unable to load your verification status. Please refresh and try again.");
+      } finally {
+        if (active) setInitializing(false);
       }
+    }
 
-      setUserEmail(user.email ?? "");
-      const metadata = user.user_metadata ?? {};
-      const savedCommunity = metadata.community as Community | undefined;
-      if (savedCommunity) setCommunity(savedCommunity);
-      const firstName = String(metadata.first_name ?? "Resident").trim() || "Resident";
-      const lastName = String(metadata.last_name ?? "").trim();
-      const lastInitial = (lastName || String(metadata.last_initial ?? "R")).slice(0, 1).toUpperCase() || "R";
-      setLegalFirstName(firstName);
-      setLegalLastName(lastName);
-
-      const [{ data: existingProfile }, { data: existingVerification }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, verification_status")
-          .eq("id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("resident_verifications")
-          .select("status")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-      ]);
-
-      if (existingProfile?.verification_status === "verified" || existingVerification?.status === "verified") {
-        router.replace("/");
-        router.refresh();
-        return;
-      }
-
-      if (!existingProfile) {
-        await supabase.from("profiles").insert({
-          id: user.id,
-          first_name: firstName,
-          last_initial: lastInitial,
-          community: savedCommunity ?? "jordan_ranch",
-          profession: metadata.profession ?? null,
-          business_name: metadata.business_name ?? null,
-          verification_status: "pending",
-        });
-      }
-    });
+    initialize();
+    return () => { active = false; };
   }, [router]);
 
   async function switchAccount() {
@@ -95,7 +102,7 @@ export default function VerifyResidencyPage() {
     setError("");
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.assign("/login?switched=1");
+    window.location.replace("/login?switched=1");
   }
 
   async function checkPublicRecord() {
@@ -132,7 +139,7 @@ export default function VerifyResidencyPage() {
     setError("");
 
     if (residentType === "property_owner" && match?.autoApproved) {
-      window.location.assign("/");
+      window.location.replace("/");
       return;
     }
 
@@ -161,9 +168,7 @@ export default function VerifyResidencyPage() {
     if (file) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       evidencePath = `${user.id}/${Date.now()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("verification-documents")
-        .upload(evidencePath, file, { upsert: false });
+      const { error: uploadError } = await supabase.storage.from("verification-documents").upload(evidencePath, file, { upsert: false });
       if (uploadError) {
         setError(uploadError.message);
         setLoading(false);
@@ -171,31 +176,25 @@ export default function VerifyResidencyPage() {
       }
     }
 
-    const method = residentType === "property_owner"
-      ? "manual_owner_review"
-      : "renter_document";
-
-    const { error: verificationError } = await supabase.from("resident_verifications").upsert(
-      {
-        user_id: user.id,
-        community,
-        resident_type: residentType,
-        residential_address: address.trim(),
-        evidence_path: evidencePath,
-        legal_first_name: legalFirstName || null,
-        legal_last_name: legalLastName || null,
-        verification_method: method,
-        property_match_status: match?.status ?? null,
-        property_match_confidence: match?.confidence ?? null,
-        fbcad_quickrefid: match?.quickRefId ?? null,
-        matched_owner_name: match?.ownerName ?? null,
-        matched_situs: match?.situs ?? null,
-        matched_legal: match?.legal ?? null,
-        public_record_checked_at: match ? new Date().toISOString() : null,
-        status: "pending",
-      },
-      { onConflict: "user_id" },
-    );
+    const method = residentType === "property_owner" ? "manual_owner_review" : "renter_document";
+    const { error: verificationError } = await supabase.from("resident_verifications").upsert({
+      user_id: user.id,
+      community,
+      resident_type: residentType,
+      residential_address: address.trim(),
+      evidence_path: evidencePath,
+      legal_first_name: legalFirstName || null,
+      legal_last_name: legalLastName || null,
+      verification_method: method,
+      property_match_status: match?.status ?? null,
+      property_match_confidence: match?.confidence ?? null,
+      fbcad_quickrefid: match?.quickRefId ?? null,
+      matched_owner_name: match?.ownerName ?? null,
+      matched_situs: match?.situs ?? null,
+      matched_legal: match?.legal ?? null,
+      public_record_checked_at: match ? new Date().toISOString() : null,
+      status: "pending",
+    }, { onConflict: "user_id" });
 
     if (verificationError) {
       setError(verificationError.message);
@@ -203,11 +202,9 @@ export default function VerifyResidencyPage() {
       return;
     }
 
-    if (residentType === "property_owner") {
-      setMessage("The property record did not fully satisfy automatic verification, so your submission will be reviewed.");
-    } else {
-      setMessage("Renter/non-owner verification submitted. Your proof of address is private and will be used only for residency verification.");
-    }
+    setMessage(residentType === "property_owner"
+      ? "The property record did not fully satisfy automatic verification, so your submission will be reviewed."
+      : "Renter/non-owner verification submitted. Your proof of address is private and will be used only for residency verification.");
     setLoading(false);
   }
 
@@ -219,31 +216,35 @@ export default function VerifyResidencyPage() {
     const user = authData.user;
 
     if (!user) {
-      router.replace("/login?verification=submitted");
+      window.location.replace("/login?verification=submitted");
       return;
     }
 
     const [{ data: profile }, { data: verification }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("verification_status")
-        .eq("id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("resident_verifications")
-        .select("status")
-        .eq("user_id", user.id)
-        .maybeSingle(),
+      supabase.from("profiles").select("verification_status").eq("id", user.id).maybeSingle(),
+      supabase.from("resident_verifications").select("status").eq("user_id", user.id).maybeSingle(),
     ]);
 
     if (profile?.verification_status === "verified" || verification?.status === "verified" || match?.autoApproved) {
-      window.location.assign("/");
+      window.location.replace("/");
       return;
     }
 
     await supabase.auth.signOut();
-    router.replace("/login?verification=submitted");
-    router.refresh();
+    window.location.replace("/login?verification=submitted");
+  }
+
+  if (initializing) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card wide">
+          <div className="auth-brand">Jordan Ranch & Tamarron Residents</div>
+          <span className="badge">Private Residency Verification</span>
+          <h1>Checking your verification status…</h1>
+          <p className="auth-copy">Please wait a moment while we securely load your account.</p>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -266,54 +267,38 @@ export default function VerifyResidencyPage() {
         <form onSubmit={submit} className="form-stack">
           <label>Community
             <select value={community} onChange={(e) => { setCommunity(e.target.value as Community); setMatch(null); setMessage(""); }}>
-              <option value="jordan_ranch">Jordan Ranch</option>
-              <option value="tamarron">Tamarron</option>
+              <option value="jordan_ranch">Jordan Ranch</option><option value="tamarron">Tamarron</option>
             </select>
           </label>
-
           <label>Residency type
             <select value={residentType} onChange={(e) => { setResidentType(e.target.value as ResidentType); setMatch(null); setFile(null); setError(""); setMessage(""); }}>
-              <option value="property_owner">Property Owner</option>
-              <option value="renter_non_owner">Resident Renter / Non-owner</option>
+              <option value="property_owner">Property Owner</option><option value="renter_non_owner">Resident Renter / Non-owner</option>
             </select>
           </label>
-
           <label>Full residential address
             <input required value={address} onChange={(e) => { setAddress(e.target.value); setMatch(null); setMessage(""); }} placeholder="Street address" autoComplete="street-address" />
           </label>
 
-          {residentType === "property_owner" ? (
-            <>
-              <div className="private-note"><strong>Property Owner:</strong> We will compare your full residential address and private legal name with Fort Bend CAD public property records.</div>
-              <button type="button" className="btn-secondary" onClick={checkPublicRecord} disabled={checking || !address.trim()}>{checking ? "Checking Fort Bend records…" : "Check Address with Fort Bend CAD"}</button>
-              {match && <div className={match.matched ? "form-success" : "private-note"}>
-                <strong>{match.autoApproved ? "Verified resident." : match.matched ? "Public record match found." : "Ownership match needs review."}</strong> {match.message}
-              </div>}
-            </>
-          ) : (
-            <>
-              <div className="private-note"><strong>Resident Renter / Non-owner:</strong> Enter your full home address and upload one current document that shows that address.</div>
-              <label>Proof of address
-                <span className="optional"> utility bill, gas/electric bill, internet/Wi-Fi bill, lease, renter&apos;s insurance, or similar current document</span>
-                <input required type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-              </label>
-            </>
-          )}
+          {residentType === "property_owner" ? <>
+            <div className="private-note"><strong>Property Owner:</strong> We will compare your full residential address and private legal name with Fort Bend CAD public property records.</div>
+            <button type="button" className="btn-secondary" onClick={checkPublicRecord} disabled={checking || !address.trim()}>{checking ? "Checking Fort Bend records…" : "Check Address with Fort Bend CAD"}</button>
+            {match && <div className={match.matched ? "form-success" : "private-note"}><strong>{match.autoApproved ? "Verified resident." : match.matched ? "Public record match found." : "Ownership match needs review."}</strong> {match.message}</div>}
+          </> : <>
+            <div className="private-note"><strong>Resident Renter / Non-owner:</strong> Enter your full home address and upload one current document that shows that address.</div>
+            <label>Proof of address <span className="optional">utility bill, gas/electric bill, internet/Wi-Fi bill, lease, renter&apos;s insurance, or similar current document</span>
+              <input required type="file" accept="image/*,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </>}
 
           <div className="private-note"><strong>Privacy:</strong> After verification, other residents see only your first name and last initial. Your full last name, exact address and verification documents remain private.</div>
           {error && <div className="form-error">{error}</div>}
           {message && <div className="form-success">{message}</div>}
-
-          {!match?.autoApproved && (
-            <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>
-          )}
+          {!match?.autoApproved && <button className="btn-primary" disabled={loading}>{loading ? "Submitting…" : "Submit for Verification"}</button>}
         </form>
 
-        {(message || match?.autoApproved) && (
-          <button type="button" className="btn-primary" onClick={continueAfterSubmission} disabled={continuing} style={{ marginTop: 12, width: "100%" }}>
-            {continuing ? "Opening app…" : match?.autoApproved ? "Continue to App" : "Continue"}
-          </button>
-        )}
+        {(message || match?.autoApproved) && <button type="button" className="btn-primary" onClick={continueAfterSubmission} disabled={continuing} style={{ marginTop: 12, width: "100%" }}>
+          {continuing ? "Opening app…" : match?.autoApproved ? "Continue to App" : "Continue"}
+        </button>}
       </section>
     </main>
   );
