@@ -47,32 +47,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (pathname === "/" && user) {
-    if (user.user_metadata?.account_type === "advertiser") {
-      const destination = request.nextUrl.clone();
-      destination.pathname = "/advertise/dashboard";
-      destination.search = "";
-      return NextResponse.redirect(destination);
-    }
-
-    // Use the resident's own verification record for the access gate. The
-    // resident_verifications RLS policy explicitly permits users to read their
-    // own record, avoiding the self-referential profiles SELECT policy.
-    const { data: verification } = await supabase
-      .from("resident_verifications")
-      .select("status")
-      .eq("user_id", user.id)
-      .eq("status", "verified")
-      .maybeSingle();
-
-    if (!verification) {
-      const verify = request.nextUrl.clone();
-      verify.pathname = "/verify-residency";
-      verify.search = "";
-      return NextResponse.redirect(verify);
-    }
+  if (pathname === "/" && user?.user_metadata?.account_type === "advertiser") {
+    const destination = request.nextUrl.clone();
+    destination.pathname = "/advertise/dashboard";
+    destination.search = "";
+    return NextResponse.redirect(destination);
   }
 
+  // Residency authorization is intentionally handled by app/page.tsx.
+  // Keeping the verification decision in one place prevents / and
+  // /verify-residency from redirecting back and forth when auth cookies or
+  // RLS-visible profile state are refreshed during verification.
   return response;
 }
 
