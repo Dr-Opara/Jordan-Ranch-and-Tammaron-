@@ -54,14 +54,22 @@ export default function VerifyResidencyPage() {
       setLegalFirstName(firstName);
       setLegalLastName(lastName);
 
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id, verification_status")
-        .eq("id", user.id)
-        .maybeSingle();
+      const [{ data: existingProfile }, { data: existingVerification }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, verification_status")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("resident_verifications")
+          .select("status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
 
-      if (existingProfile?.verification_status === "verified") {
+      if (existingProfile?.verification_status === "verified" || existingVerification?.status === "verified") {
         router.replace("/");
+        router.refresh();
         return;
       }
 
@@ -113,8 +121,7 @@ export default function VerifyResidencyPage() {
     setError("");
 
     if (residentType === "property_owner" && match?.autoApproved) {
-      router.replace("/");
-      router.refresh();
+      window.location.assign("/");
       return;
     }
 
@@ -205,13 +212,20 @@ export default function VerifyResidencyPage() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("verification_status")
-      .eq("id", user.id)
-      .maybeSingle();
+    const [{ data: profile }, { data: verification }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("verification_status")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("resident_verifications")
+        .select("status")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
-    if (profile?.verification_status === "verified" || match?.autoApproved) {
+    if (profile?.verification_status === "verified" || verification?.status === "verified" || match?.autoApproved) {
       window.location.assign("/");
       return;
     }
