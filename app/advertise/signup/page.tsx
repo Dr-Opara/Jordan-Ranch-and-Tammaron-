@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const PRODUCTION_SITE_URL = "https://jrt.community";
+
 export default function AdvertiserSignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -18,12 +20,12 @@ export default function AdvertiserSignupPage() {
     setLoading(true); setError(""); setMessage("");
     const supabase = createClient();
     const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-    const siteUrl = configured || window.location.origin;
+    const siteUrl = configured || PRODUCTION_SITE_URL;
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback?next=/advertise/setup`,
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/advertise/setup&account_type=advertiser`,
         data: { account_type: "advertiser" },
       },
     });
