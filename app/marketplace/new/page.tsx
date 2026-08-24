@@ -20,8 +20,22 @@ export default function NewListingPage(){
  const [files,setFiles]=useState<File[]>([]);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(false);
+ const [checkingAccess,setCheckingAccess]=useState(true);
 
- useEffect(()=>{(async()=>{const s=createClient();const {data:u}=await s.auth.getUser();if(!u.user){router.replace("/login");return;}const {data:p}=await s.from("profiles").select("community,verification_status").eq("id",u.user.id).maybeSingle();if(!p||p.verification_status!=="verified"){router.replace("/verify-residency");return;}setCommunity(p.community as Community);})();},[router]);
+ useEffect(()=>{void (async()=>{
+   const s=createClient();
+   const {data:u}=await s.auth.getUser();
+   if(!u.user){window.location.replace("/login");return;}
+   const [{data:p},{data:v}] = await Promise.all([
+     s.from("profiles").select("community,verification_status").eq("id",u.user.id).maybeSingle(),
+     s.from("resident_verifications").select("community,status").eq("user_id",u.user.id).maybeSingle(),
+   ]);
+   const verified=p?.verification_status==="verified"||v?.status==="verified";
+   if(!verified){window.location.replace("/");return;}
+   const resolvedCommunity=(p?.community??v?.community??"jordan_ranch") as Community;
+   setCommunity(resolvedCommunity);
+   setCheckingAccess(false);
+ })();},[]);
 
  function changePostType(next:PostType){
    setPostType(next);
@@ -31,7 +45,8 @@ export default function NewListingPage(){
 
  async function submit(e:FormEvent){
    e.preventDefault();setLoading(true);setError("");
-   const s=createClient();const {data:u}=await s.auth.getUser();if(!u.user)return;
+   const s=createClient();const {data:u}=await s.auth.getUser();
+   if(!u.user){window.location.replace("/login");return;}
    const urls:string[]=[];
    for(const file of files.slice(0,5)){
      const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
@@ -41,11 +56,14 @@ export default function NewListingPage(){
      const {data:url}=s.storage.from("marketplace-media").getPublicUrl(path);urls.push(url.publicUrl);
    }
    const numericPrice=postType==="free"?0:price.trim()===""?null:Number(price);
+   if(numericPrice!==null&&!Number.isFinite(numericPrice)){setError("Enter a valid price.");setLoading(false);return;}
    const finalTitle=postType==="yard_sale"&&!title.toLowerCase().includes("yard sale")?`Yard Sale — ${title.trim()}`:title.trim();
    const {error}=await s.from("marketplace_listings").insert({seller_id:u.user.id,title:finalTitle,description:description.trim()||null,price:numericPrice,category,community,visible_to_both:both,image_urls:urls,status:"active"});
    if(error){setError(error.message);setLoading(false);return;}
-   router.push("/");router.refresh();
+   window.location.replace("/");
  }
+
+ if(checkingAccess)return <main className="auth-page"><section className="auth-card">Checking resident access…</section></main>;
 
  return <main className="auth-page"><section className="auth-card wide"><Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link><span className="badge">Resident Marketplace</span><h1>Post something</h1><p className="auth-copy">Sell an item, give something away for free, or post a yard sale. New resident posts also appear on the Home feed for verified residents.</p><form className="form-stack" onSubmit={submit}>
  <label>What are you posting?<select value={postType} onChange={e=>changePostType(e.target.value as PostType)}><option value="for_sale">For Sale</option><option value="free">Free / Giveaway</option><option value="yard_sale">Yard Sale</option></select></label>
