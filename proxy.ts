@@ -6,6 +6,7 @@ const residentProtected = new Set(["/"]);
 const authProtectedPrefixes = [
   "/verify-residency",
   "/marketplace",
+  "/community",
   "/business",
   "/resident",
   "/profile",
@@ -23,9 +24,6 @@ const authProtectedPrefixes = [
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host")?.split(":")[0]?.toLowerCase() ?? "";
 
-  // Keep every production-facing request on the permanent JRT.community host.
-  // Vercel deployment URLs remain available internally, but users should never
-  // stay on a *.vercel.app URL in production.
   if (hostname.includes("jordan-ranch-tamarron") && hostname.endsWith(".vercel.app")) {
     const canonical = request.nextUrl.clone();
     canonical.protocol = "https:";
