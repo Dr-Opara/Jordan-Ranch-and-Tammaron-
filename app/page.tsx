@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import ResidentApp from "@/components/resident-app";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,13 +12,24 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.user_metadata?.account_type === "advertiser") redirect("/advertise/dashboard");
 
+  // Verification is security-critical application state. Read it on the server
+  // with the service role when available so a freshly verified resident is not
+  // incorrectly treated as pending because of client/RLS visibility or stale state.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const verificationClient = supabaseUrl && serviceRoleKey
+    ? createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : supabase;
+
   const [{ data: profile }, { data: verification }] = await Promise.all([
-    supabase
+    verificationClient
       .from("profiles")
       .select("id,first_name,last_initial,profile_photo_url,community,profession,business_name,member_since,verification_status")
       .eq("id", user.id)
       .maybeSingle(),
-    supabase
+    verificationClient
       .from("resident_verifications")
       .select("status")
       .eq("user_id", user.id)
@@ -26,9 +38,6 @@ export default async function Page() {
 
   const isVerified = profile?.verification_status === "verified" || verification?.status === "verified";
 
-  // Do not bounce an authenticated but unverified resident away from the root.
-  // Keep the browser on jrt.community and let the resident deliberately enter
-  // the verification flow. This prevents redirect flicker and stale-session loops.
   if (!profile || !isVerified) {
     return (
       <main className="auth-page">
@@ -37,8 +46,8 @@ export default async function Page() {
           <span className="badge">Residents Only</span>
           <h1>Finish setting up your resident account</h1>
           <p className="auth-copy">
-            Your account is signed in, but residency verification is not complete for this session.
-            You can stay on JRT.community and continue when you are ready.
+            Your account is signed in, but residency verification is not complete.
+            Complete residency verification to enter the resident app.
           </p>
           <div className="form-stack">
             <Link href="/verify-residency" className="btn-primary">Verify Residency</Link>
