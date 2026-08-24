@@ -2,24 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function PolicyAgreementPage(){
   const router=useRouter();
-  const params=useSearchParams();
   const [accepted,setAccepted]=useState(false);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
   const [accountType,setAccountType]=useState<"resident"|"advertiser">("resident");
+  const [ready,setReady]=useState(false);
 
   useEffect(()=>{void(async()=>{
     const s=createClient();
     const {data:{user}}=await s.auth.getUser();
     if(!user){router.replace("/login");return;}
-    const inferred=user.user_metadata?.account_type==="advertiser"?"advertiser":"resident";
-    setAccountType(params.get("account_type")==="advertiser"?"advertiser":inferred);
-  })();},[params,router]);
+    setAccountType(user.user_metadata?.account_type==="advertiser"?"advertiser":"resident");
+    setReady(true);
+  })();},[router]);
 
   const isBusiness=accountType==="advertiser";
   const links=useMemo(()=>isBusiness?[
@@ -44,6 +44,8 @@ export default function PolicyAgreementPage(){
     if(!response.ok){setError(body.error||"Unable to save your agreement.");setLoading(false);return;}
     window.location.assign(isBusiness?"/advertise/setup":"/verify-residency");
   }
+
+  if(!ready)return <main className="auth-page"><section className="auth-card">Loading agreement…</section></main>;
 
   return <main className="auth-page"><section className="auth-card wide">
     <Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link>
