@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 
 type Community = "jordan_ranch" | "tamarron";
 
+const PRODUCTION_SITE_URL = "https://jrt.community";
+
 export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
@@ -36,12 +38,12 @@ export default function SignupPage() {
 
     const supabase = createClient();
     const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-    const siteUrl = configured || window.location.origin;
+    const siteUrl = configured || PRODUCTION_SITE_URL;
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback?next=/verify-residency`,
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/verify-residency&account_type=resident`,
         data: {
           first_name: cleanFirst,
           last_name: cleanLast,
