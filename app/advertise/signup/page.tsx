@@ -25,13 +25,13 @@ export default function AdvertiserSignupPage() {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/confirm?next=/advertise/setup&account_type=advertiser`,
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/policy-agreement?account_type=advertiser&account_type=advertiser`,
         data: { account_type: "advertiser" },
       },
     });
     if (error) { setError(error.message); setLoading(false); return; }
-    if (data.session) { router.push("/advertise/setup"); return; }
-    setMessage("Check your email to confirm your business account, then you’ll continue to business setup.");
+    if (data.session) { router.push("/policy-agreement?account_type=advertiser"); return; }
+    setMessage("Check your email to confirm your business account. After confirmation, you’ll review the business terms and policies before setup.");
     setLoading(false);
   }
 
