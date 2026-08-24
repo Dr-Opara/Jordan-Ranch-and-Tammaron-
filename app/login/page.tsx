@@ -52,23 +52,14 @@ export default function LoginPage() {
         return;
       }
 
-      const accountType = result.data.user.user_metadata?.account_type;
-      if (accountType === "advertiser") {
-        window.location.assign("/advertise/dashboard");
+      if (result.data.user.user_metadata?.account_type === "advertiser") {
+        window.location.replace("/advertise/dashboard");
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("verification_status")
-        .eq("id", result.data.user.id)
-        .maybeSingle();
-
-      if (profile?.verification_status === "verified") {
-        window.location.assign("/");
-      } else {
-        window.location.assign("/verify-residency");
-      }
+      // The root page performs the single authoritative residency check using
+      // server-side state. Do not duplicate that decision in the browser.
+      window.location.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in. Please try again.");
     } finally {
