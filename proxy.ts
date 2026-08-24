@@ -21,6 +21,23 @@ const authProtectedPrefixes = [
   "/advertise/profile",
   "/admin",
 ];
+const advertiserProtectedPrefixes = [
+  "/advertise/setup",
+  "/advertise/dashboard",
+  "/advertise/campaign",
+  "/advertise/deal",
+  "/advertise/plans",
+  "/advertise/profile",
+];
+const residentOnlyPrefixes = [
+  "/verify-residency",
+  "/marketplace",
+  "/community",
+  "/resident",
+  "/profile",
+  "/events",
+  "/coming-soon",
+];
 
 export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host")?.split(":")[0]?.toLowerCase() ?? "";
@@ -51,37 +68,49 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
   const needsAuth = residentProtected.has(pathname) || authProtectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+  const isAdvertiserRoute = advertiserProtectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+  const isResidentOnlyRoute = residentOnlyPrefixes.some((prefix) => pathname.startsWith(prefix));
 
   if (needsAuth && !user) {
     const login = request.nextUrl.clone();
-    login.pathname = pathname.startsWith("/advertise/") ? "/advertise/signup" : "/login";
+    login.pathname = isAdvertiserRoute ? "/advertise/login" : "/login";
     login.search = "";
     return NextResponse.redirect(login);
   }
 
-  if (user && needsAuth && pathname !== "/policy-agreement") {
+  if (user) {
     const accountType = user.user_metadata?.account_type === "advertiser" ? "advertiser" : "resident";
-    const currentBundle = accountType === "advertiser" ? "business_v1.0" : "resident_v1.0";
-    const { data: acceptance } = await supabase
-      .from("policy_acceptances")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("bundle_version", currentBundle)
-      .maybeSingle();
 
-    if (!acceptance) {
-      const agreement = request.nextUrl.clone();
-      agreement.pathname = "/policy-agreement";
-      agreement.search = `?account_type=${accountType}`;
-      return NextResponse.redirect(agreement);
+    // Keep the resident and advertiser experiences strictly separated.
+    if (isAdvertiserRoute && accountType !== "advertiser") {
+      const destination = request.nextUrl.clone();
+      destination.pathname = "/";
+      destination.search = "";
+      return NextResponse.redirect(destination);
     }
-  }
+    if ((isResidentOnlyRoute || pathname === "/") && accountType === "advertiser") {
+      const destination = request.nextUrl.clone();
+      destination.pathname = "/advertise/dashboard";
+      destination.search = "";
+      return NextResponse.redirect(destination);
+    }
 
-  if (pathname === "/" && user?.user_metadata?.account_type === "advertiser") {
-    const destination = request.nextUrl.clone();
-    destination.pathname = "/advertise/dashboard";
-    destination.search = "";
-    return NextResponse.redirect(destination);
+    if (needsAuth && pathname !== "/policy-agreement") {
+      const currentBundle = accountType === "advertiser" ? "business_v1.0" : "resident_v1.0";
+      const { data: acceptance } = await supabase
+        .from("policy_acceptances")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("bundle_version", currentBundle)
+        .maybeSingle();
+
+      if (!acceptance) {
+        const agreement = request.nextUrl.clone();
+        agreement.pathname = "/policy-agreement";
+        agreement.search = `?account_type=${accountType}`;
+        return NextResponse.redirect(agreement);
+      }
+    }
   }
 
   return response;
