@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const residentProtected = new Set(["/"]);
 const authProtectedPrefixes = [
-  "/verify-phone",
   "/verify-residency",
   "/marketplace",
   "/business",
@@ -48,13 +47,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (user && !user.phone_confirmed_at && pathname !== "/verify-phone" && !pathname.startsWith("/auth/")) {
-    const verifyPhone = request.nextUrl.clone();
-    verifyPhone.pathname = "/verify-phone";
-    verifyPhone.search = "";
-    return NextResponse.redirect(verifyPhone);
-  }
-
   if (pathname === "/" && user?.user_metadata?.account_type === "advertiser") {
     const destination = request.nextUrl.clone();
     destination.pathname = "/advertise/dashboard";
@@ -62,10 +54,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  // Residency authorization is intentionally handled by app/page.tsx.
-  // Keeping the verification decision in one place prevents / and
-  // /verify-residency from redirecting back and forth when auth cookies or
-  // RLS-visible profile state are refreshed during verification.
+  // Residency authorization is handled by app/page.tsx only.
+  // Keeping that decision in one place avoids redirect loops and UI flicker.
   return response;
 }
 
