@@ -25,7 +25,29 @@ export default async function Page() {
   ]);
 
   const isVerified = profile?.verification_status === "verified" || verification?.status === "verified";
-  if (!profile || !isVerified) redirect("/verify-residency");
+
+  // Do not bounce an authenticated but unverified resident away from the root.
+  // Keep the browser on jrt.community and let the resident deliberately enter
+  // the verification flow. This prevents redirect flicker and stale-session loops.
+  if (!profile || !isVerified) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <div className="auth-brand">Jordan Ranch & Tamarron Residents</div>
+          <span className="badge">Residents Only</span>
+          <h1>Finish setting up your resident account</h1>
+          <p className="auth-copy">
+            Your account is signed in, but residency verification is not complete for this session.
+            You can stay on JRT.community and continue when you are ready.
+          </p>
+          <div className="form-stack">
+            <Link href="/verify-residency" className="btn-primary">Verify Residency</Link>
+            <Link href="/login?switch=1" className="btn-secondary">Use a Different Account</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   const [totalResult,jordanResult,tamarronResult,listingsResult,businessesResult,homeAdsResult,localAdsResult,dealsResult,updatesResult,residentPostsResult,eventsResult] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified"),
