@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const residentProtected = new Set(["/"]);
 const authProtectedPrefixes = [
+  "/verify-phone",
   "/verify-residency",
   "/marketplace",
   "/business",
@@ -45,6 +46,13 @@ export async function proxy(request: NextRequest) {
     login.pathname = pathname.startsWith("/advertise/") ? "/advertise/signup" : "/login";
     login.search = "";
     return NextResponse.redirect(login);
+  }
+
+  if (user && !user.phone_confirmed_at && pathname !== "/verify-phone" && !pathname.startsWith("/auth/")) {
+    const verifyPhone = request.nextUrl.clone();
+    verifyPhone.pathname = "/verify-phone";
+    verifyPhone.search = "";
+    return NextResponse.redirect(verifyPhone);
   }
 
   if (pathname === "/" && user?.user_metadata?.account_type === "advertiser") {
