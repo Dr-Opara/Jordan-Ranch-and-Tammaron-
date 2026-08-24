@@ -18,12 +18,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (!error) {
-      const { data: { user } } = await supabase.auth.getUser();
-      const resolvedAccountType = accountType || String(user?.user_metadata?.account_type ?? "resident");
-      const destination = user?.phone_confirmed_at
-        ? next
-        : `/verify-phone?account_type=${encodeURIComponent(resolvedAccountType)}`;
-      const redirectUrl = new URL(destination, url.origin);
+      const redirectUrl = new URL(next, url.origin);
       redirectUrl.searchParams.set("confirmed", "1");
       return NextResponse.redirect(redirectUrl);
     }
