@@ -9,13 +9,6 @@ type Community = "jordan_ranch" | "tamarron";
 
 const PRODUCTION_SITE_URL = "https://jrt.community";
 
-function normalizeUsPhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  return value.trim();
-}
-
 export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
@@ -24,7 +17,6 @@ export default function SignupPage() {
   const [profession, setProfession] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -38,14 +30,8 @@ export default function SignupPage() {
 
     const cleanFirst = firstName.trim();
     const cleanLast = lastName.trim();
-    const cleanPhone = normalizeUsPhone(phone);
     if (!cleanFirst || !cleanLast) {
       setError("Enter your full first and last name.");
-      setLoading(false);
-      return;
-    }
-    if (!/^\+1\d{10}$/.test(cleanPhone)) {
-      setError("Enter a valid U.S. mobile number with area code.");
       setLoading(false);
       return;
     }
@@ -57,7 +43,7 @@ export default function SignupPage() {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/confirm?next=/verify-phone&account_type=resident`,
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/verify-residency&account_type=resident`,
         data: {
           first_name: cleanFirst,
           last_name: cleanLast,
@@ -65,7 +51,6 @@ export default function SignupPage() {
           community,
           profession: profession.trim() || null,
           business_name: businessName.trim() || null,
-          phone: cleanPhone,
           account_type: "resident",
         },
       },
@@ -78,11 +63,11 @@ export default function SignupPage() {
     }
 
     if (data.session) {
-      router.push("/verify-phone");
+      router.push("/verify-residency");
       return;
     }
 
-    setMessage("Check your email to confirm your account. After confirmation, we’ll verify your mobile number by SMS before residency verification.");
+    setMessage("Check your email to confirm your account. After confirmation, you’ll continue to residency verification.");
     setLoading(false);
   }
 
@@ -104,8 +89,6 @@ export default function SignupPage() {
             <label>Business <span className="optional">optional</span><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} maxLength={100} /></label>
           </div>
           <label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></label>
-          <label>Mobile phone<input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(281) 555-0123" autoComplete="tel" /></label>
-          <div className="private-note"><strong>Phone privacy:</strong> Your mobile number is used for account verification and security. It is never shown on your resident profile.</div>
           <label>Password<input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></label>
           {error && <div className="form-error">{error}</div>}
           {message && <div className="form-success">{message}</div>}
