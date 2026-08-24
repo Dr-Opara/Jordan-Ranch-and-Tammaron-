@@ -23,6 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/policies#deletion">Account & Data Deletion</Link>
             <Link href="/contact">Contact & Support</Link>
           </nav>
+          <p>Jordan Ranch & Tamarron Residents is a product of <a href="https://theboringproduct.com/" target="_blank" rel="noopener noreferrer">The Boring Product</a>.</p>
           <p>© {new Date().getFullYear()} Jordan Ranch & Tamarron Residents · JRT.community</p>
         </footer>
       </body>
