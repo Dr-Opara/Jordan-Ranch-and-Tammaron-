@@ -29,12 +29,14 @@ export default function VerifyResidencyPage() {
   const [file, setFile] = useState<File | null>(null);
   const [legalFirstName, setLegalFirstName] = useState("");
   const [legalLastName, setLegalLastName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [match, setMatch] = useState<MatchResult | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -45,6 +47,7 @@ export default function VerifyResidencyPage() {
         return;
       }
 
+      setUserEmail(user.email ?? "");
       const metadata = user.user_metadata ?? {};
       const savedCommunity = metadata.community as Community | undefined;
       if (savedCommunity) setCommunity(savedCommunity);
@@ -86,6 +89,14 @@ export default function VerifyResidencyPage() {
       }
     });
   }, [router]);
+
+  async function switchAccount() {
+    setSwitchingAccount(true);
+    setError("");
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.assign("/login?switched=1");
+  }
 
   async function checkPublicRecord() {
     if (!address.trim()) {
@@ -242,6 +253,15 @@ export default function VerifyResidencyPage() {
         <span className="badge">Private Residency Verification</span>
         <h1>Verify that you live here</h1>
         <p className="auth-copy">Choose the option that describes your residency. Your full name, address and verification records are private and never appear on your resident profile.</p>
+
+        {userEmail && (
+          <div className="private-note" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span><strong>Signed in as:</strong> {userEmail}</span>
+            <button type="button" className="btn-secondary" onClick={switchAccount} disabled={switchingAccount} style={{ width: "auto", padding: "8px 12px" }}>
+              {switchingAccount ? "Switching…" : "Not you? Switch Account"}
+            </button>
+          </div>
+        )}
 
         <form onSubmit={submit} className="form-stack">
           <label>Community
