@@ -22,7 +22,7 @@ export default function AuthFooter() {
       </nav>
       <p>JRT.Community is a product of <a href="https://theboringproduct.com/" target="_blank" rel="noopener noreferrer">The Boring Product</a>.</p>
       <p style={{maxWidth:680,margin:"8px auto"}}>
-        JRT.Community is an independent community application created to connect and unite residents of Jordan Ranch and Tamarron. JRT.Community is not affiliated with, endorsed by, sponsored by, or operated by JordanRanchTexas.com, the Jordan Ranch developer, Tamarron developer, any homeowners association (HOA), property management company, or other official community organization unless expressly stated.
+        JRT.Community is an independent resident community app and is not affiliated with JordanRanchTexas.com, community developers, HOAs, property managers, or other official community organizations.
       </p>
       <p>© {new Date().getFullYear()} Jordan Ranch & Tamarron Residents · JRT.community</p>
     </footer>
