@@ -27,7 +27,7 @@ export default function AdvertisePage() {
         <div className="private-note" style={{marginTop:16}}>All business listings are reviewed before they become visible to residents. Payment is collected securely through Stripe; this app does not store card or bank-card numbers.</div>
         <div className="cta-row" style={{ marginTop: 18 }}>
           <Link className="btn-primary" href="/advertise/signup" style={{ textAlign: "center", textDecoration: "none" }}>Create Business Account</Link>
-          <Link className="btn-secondary" href="/login" style={{ textAlign: "center", textDecoration: "none" }}>Business Sign In</Link>
+          <Link className="btn-secondary" href="/advertise/login" style={{ textAlign: "center", textDecoration: "none" }}>Business Sign In</Link>
         </div>
       </section>
     </main>
