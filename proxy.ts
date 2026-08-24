@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const CANONICAL_HOST = "jrt.community";
 const residentProtected = new Set(["/"]);
 const authProtectedPrefixes = [
   "/verify-residency",
@@ -20,6 +21,18 @@ const authProtectedPrefixes = [
 ];
 
 export async function proxy(request: NextRequest) {
+  const hostname = request.headers.get("host")?.split(":")[0]?.toLowerCase() ?? "";
+
+  // Keep every production-facing request on the permanent JRT.community host.
+  // Vercel deployment URLs remain available internally, but users should never
+  // stay on a *.vercel.app URL in production.
+  if (hostname.includes("jordan-ranch-tamarron") && hostname.endsWith(".vercel.app")) {
+    const canonical = request.nextUrl.clone();
+    canonical.protocol = "https:";
+    canonical.host = CANONICAL_HOST;
+    return NextResponse.redirect(canonical, 308);
+  }
+
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -54,8 +67,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  // Residency authorization is handled by app/page.tsx only.
-  // Keeping that decision in one place avoids redirect loops and UI flicker.
   return response;
 }
 
