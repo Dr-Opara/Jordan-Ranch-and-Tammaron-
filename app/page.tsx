@@ -11,13 +11,21 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.user_metadata?.account_type === "advertiser") redirect("/advertise/dashboard");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id,first_name,last_initial,profile_photo_url,community,profession,business_name,member_since,verification_status")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: verification }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id,first_name,last_initial,profile_photo_url,community,profession,business_name,member_since,verification_status")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("resident_verifications")
+      .select("status")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
-  if (!profile || profile.verification_status !== "verified") redirect("/verify-residency");
+  const isVerified = profile?.verification_status === "verified" || verification?.status === "verified";
+  if (!profile || !isVerified) redirect("/verify-residency");
 
   const [totalResult,jordanResult,tamarronResult,listingsResult,businessesResult,homeAdsResult,localAdsResult,dealsResult,updatesResult,residentPostsResult,eventsResult] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("verification_status", "verified"),
