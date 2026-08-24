@@ -43,7 +43,7 @@ export default function SignupPage() {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/confirm?next=/verify-residency&account_type=resident`,
+        emailRedirectTo: `${siteUrl}/auth/confirm?next=/policy-agreement?account_type=resident&account_type=resident`,
         data: {
           first_name: cleanFirst,
           last_name: cleanLast,
@@ -63,11 +63,11 @@ export default function SignupPage() {
     }
 
     if (data.session) {
-      router.push("/verify-residency");
+      router.push("/policy-agreement?account_type=resident");
       return;
     }
 
-    setMessage("Check your email to confirm your account. After confirmation, you’ll continue to residency verification.");
+    setMessage("Check your email to confirm your account. After confirmation, you’ll review the community rules and policies before residency verification.");
     setLoading(false);
   }
 
