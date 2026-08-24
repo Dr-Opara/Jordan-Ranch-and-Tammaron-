@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const CANONICAL_HOST = "jrt.community";
 const residentProtected = new Set(["/"]);
 const authProtectedPrefixes = [
+  "/policy-agreement",
   "/verify-residency",
   "/marketplace",
   "/community",
@@ -56,6 +57,24 @@ export async function proxy(request: NextRequest) {
     login.pathname = pathname.startsWith("/advertise/") ? "/advertise/signup" : "/login";
     login.search = "";
     return NextResponse.redirect(login);
+  }
+
+  if (user && needsAuth && pathname !== "/policy-agreement") {
+    const accountType = user.user_metadata?.account_type === "advertiser" ? "advertiser" : "resident";
+    const currentBundle = accountType === "advertiser" ? "business_v1.0" : "resident_v1.0";
+    const { data: acceptance } = await supabase
+      .from("policy_acceptances")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("bundle_version", currentBundle)
+      .maybeSingle();
+
+    if (!acceptance) {
+      const agreement = request.nextUrl.clone();
+      agreement.pathname = "/policy-agreement";
+      agreement.search = `?account_type=${accountType}`;
+      return NextResponse.redirect(agreement);
+    }
   }
 
   if (pathname === "/" && user?.user_metadata?.account_type === "advertiser") {
