@@ -55,13 +55,17 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(destination);
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("verification_status")
-      .eq("id", user.id)
+    // Use the resident's own verification record for the access gate. The
+    // resident_verifications RLS policy explicitly permits users to read their
+    // own record, avoiding the self-referential profiles SELECT policy.
+    const { data: verification } = await supabase
+      .from("resident_verifications")
+      .select("status")
+      .eq("user_id", user.id)
+      .eq("status", "verified")
       .maybeSingle();
 
-    if (!profile || profile.verification_status !== "verified") {
+    if (!verification) {
       const verify = request.nextUrl.clone();
       verify.pathname = "/verify-residency";
       verify.search = "";
