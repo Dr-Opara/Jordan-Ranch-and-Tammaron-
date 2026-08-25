@@ -12,9 +12,6 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.user_metadata?.account_type === "advertiser") redirect("/advertise/dashboard");
 
-  // Verification is security-critical application state. Read it on the server
-  // with the service role when available so a freshly verified resident is not
-  // incorrectly treated as pending because of client/RLS visibility or stale state.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const verificationClient = supabaseUrl && serviceRoleKey
@@ -68,7 +65,13 @@ export default async function Page() {
     supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).eq("placement_local", true).order("created_at", { ascending: false }).limit(12),
     supabase.from("deals").select("id,title,description,code,view_count,claim_count,expires_at,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
     supabase.from("community_updates").select("id,title,body,category,published_at").order("published_at", { ascending: false }).limit(10),
-    supabase.from("resident_posts").select("id,title,body,category,location_text,created_at,profiles!resident_posts_author_id_fkey(first_name,last_initial)").eq("status","active").order("created_at",{ascending:false}).limit(20),
+    verificationClient
+      .from("resident_posts")
+      .select("id,title,body,category,location_text,created_at,community,visible_to_both,profiles!resident_posts_author_id_fkey(first_name,last_initial)")
+      .eq("status","active")
+      .or(`visible_to_both.eq.true,community.eq.${profile.community}`)
+      .order("created_at",{ascending:false})
+      .limit(20),
     supabase.from("community_events").select("id,title,description,location,starts_at,ends_at").gte("starts_at", new Date().toISOString()).order("starts_at", { ascending: true }).limit(8),
   ]);
 
@@ -84,7 +87,7 @@ export default async function Page() {
     };
   });
 
-  const combinedUpdates = [...((updatesResult.data ?? []) as Array<{id:string;title:string;body:string|null;category:string;published_at:string}>), ...residentPosts]
+  const combinedUpdates = [...residentPosts, ...((updatesResult.data ?? []) as Array<{id:string;title:string;body:string|null;category:string;published_at:string}>)]
     .sort((a,b)=>new Date(b.published_at).getTime()-new Date(a.published_at).getTime())
     .slice(0,20);
 
