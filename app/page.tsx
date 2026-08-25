@@ -77,11 +77,12 @@ export default async function Page() {
 
   const residentPosts = rawResidentPosts.map((post)=>{
     const author=authors.get(post.author_id);
+    const categoryLabel = post.category.replaceAll("_", " ");
     return {
       id:`resident-${post.id}`,
-      title:post.title,
-      body:`${post.body}${post.location_text?` · ${post.location_text}`:""}${author?` · Shared by ${author.first_name} ${author.last_initial}.`:""}`,
-      category:`resident ${post.category}`,
+      title:"",
+      body:`${post.body}${post.location_text?` · ${post.location_text}`:""}`,
+      category:`resident ${categoryLabel}${author?` · shared by ${author.first_name} ${author.last_initial}.`:""}`,
       published_at:post.created_at,
     };
   });
