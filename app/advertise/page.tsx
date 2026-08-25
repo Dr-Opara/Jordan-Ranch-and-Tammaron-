@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const plans = [
-  { name: "Get Listed", price: "$99/mo", text: "Standard Local Business directory listing." },
-  { name: "Get Noticed", price: "$199/mo", text: "Enhanced profile, priority Local Business placement and resident deals." },
-  { name: "Get Featured", price: "$299/mo", text: "Priority Local Business placement plus image and video campaigns." },
-  { name: "Get Everywhere", price: "$399/mo", text: "Home feed, Local Business, Deals, image/video campaigns and Coming Soon placement." },
+  { name: "Get Listed", price: "$49/mo", text: "Standard Local Business directory listing." },
+  { name: "Get Noticed", price: "$99/mo", text: "Enhanced profile, priority Local Business placement and resident deals." },
+  { name: "Get Featured", price: "$199/mo", text: "Priority Local Business placement plus image and video campaigns." },
+  { name: "Get Everywhere", price: "$299/mo", text: "Home feed, Local Business, Deals, image/video campaigns and Coming Soon placement." },
 ];
 
 export default function AdvertisePage() {
