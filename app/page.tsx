@@ -63,11 +63,11 @@ export default async function Page() {
     supabase.from("business_ads").select("id,headline,body,format,media_urls,impression_count,video_play_count,click_count,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).eq("placement_local", true).order("created_at", { ascending: false }).limit(12),
     supabase.from("deals").select("id,title,description,code,view_count,claim_count,expires_at,businesses(id,name)").eq("approval_status", "approved").eq("is_active", true).order("created_at", { ascending: false }).limit(30),
     supabase.from("community_updates").select("id,title,body,category,published_at").order("published_at", { ascending: false }).limit(10),
-    trustedClient.from("resident_posts").select("id,author_id,title,body,category,location_text,created_at,community,visible_to_both").eq("status","active").or(`visible_to_both.eq.true,community.eq.${profile.community}`).order("created_at",{ascending:false}).limit(20),
+    trustedClient.from("resident_posts").select("id,author_id,title,body,category,location_text,created_at,community,visible_to_both,view_count").eq("status","active").or(`visible_to_both.eq.true,community.eq.${profile.community}`).order("created_at",{ascending:false}).limit(20),
     supabase.from("community_events").select("id,title,description,location,starts_at,ends_at").gte("starts_at", new Date().toISOString()).order("starts_at", { ascending: true }).limit(8),
   ]);
 
-  type ResidentPostRow={id:string;author_id:string;title:string;body:string;category:string;location_text:string|null;created_at:string;community:string;visible_to_both:boolean};
+  type ResidentPostRow={id:string;author_id:string;title:string;body:string;category:string;location_text:string|null;created_at:string;community:string;visible_to_both:boolean;view_count:number};
   const rawResidentPosts = (residentPostsResult.data ?? []) as ResidentPostRow[];
   const authorIds = [...new Set(rawResidentPosts.map(p=>p.author_id))];
   const authorResult = authorIds.length
@@ -84,10 +84,16 @@ export default async function Page() {
       body:`${post.body}${post.location_text?` · ${post.location_text}`:""}`,
       category:`resident ${categoryLabel}${author?` · shared by ${author.first_name} ${author.last_initial}.`:""}`,
       published_at:post.created_at,
+      kind:"resident" as const,
+      post_id:post.id,
+      author_id:post.author_id,
+      is_owner:post.author_id===user.id,
+      view_count:Number(post.view_count ?? 0),
     };
   });
 
-  const combinedUpdates = [...residentPosts, ...((updatesResult.data ?? []) as Array<{id:string;title:string;body:string|null;category:string;published_at:string}>)]
+  const systemUpdates = ((updatesResult.data ?? []) as Array<{id:string;title:string;body:string|null;category:string;published_at:string}>).map(u=>({...u,kind:"system" as const}));
+  const combinedUpdates = [...residentPosts, ...systemUpdates]
     .sort((a,b)=>new Date(b.published_at).getTime()-new Date(a.published_at).getTime())
     .slice(0,20);
 
