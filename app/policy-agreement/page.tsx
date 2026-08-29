@@ -25,7 +25,7 @@ export default function PolicyAgreementPage(){
   const links=useMemo(()=>isBusiness?[
     ["Terms of Service","/policies/terms"],
     ["Privacy Policy","/policies/privacy"],
-    ["Business Advertising Terms","/policies/advertising"],
+    ["Business & Sponsored Leaderboard Terms","/policies/advertising"],
     ["Community Guidelines","/policies/community-guidelines"],
     ["Account & Data Deletion","/policies/account-deletion"],
   ]:[
@@ -48,14 +48,14 @@ export default function PolicyAgreementPage(){
   if(!ready)return <main className="auth-page"><section className="auth-card">Loading agreement…</section></main>;
 
   return <main className="auth-page"><section className="auth-card wide">
-    <Link href="/" className="auth-brand">Jordan Ranch & Tamarron</Link>
+    <Link href="/" className="auth-brand">JRT.Community</Link>
     <span className="badge">Required Agreement</span>
     <h1>{isBusiness?"Business Terms & Policies":"Community Rules & Policies"}</h1>
     <p className="auth-copy">Before continuing, review this summary and agree to the policies that govern use of JRT.community.</p>
 
     <article className="card"><div className="card-body">
       <div className="card-title">Plain-language summary</div>
-      {isBusiness?<div className="card-copy">Use accurate business information. Advertising and deals are subject to review. Paid plans may renew until canceled. Do not publish misleading, illegal, discriminatory, unsafe, or privacy-invasive content. JRT may reject or remove content that violates platform rules. Payment processing is handled by Stripe, while account and support records are handled by JRT.</div>:<div className="card-copy">Be respectful and truthful. Do not harass, threaten, scam, impersonate others, post illegal items, or expose private residential information. Marketplace transactions are between residents, not JRT. Your verification information is private and used to confirm community eligibility. JRT may remove content or suspend accounts that violate the rules.</div>}
+      {isBusiness?<div className="card-copy">Use accurate business information. Your reviewed directory listing is free. Sponsored Leaderboard placement is optional and uses a recurring monthly visibility bid processed by Stripe. Higher active bids receive higher paid placement, while resident ratings remain independent and cannot be purchased. JRT may reject or remove misleading, illegal, discriminatory, unsafe, or privacy-invasive content.</div>:<div className="card-copy">Be respectful and truthful. Do not harass, threaten, scam, impersonate others, post illegal items, or expose private residential information. Marketplace transactions are between residents, not JRT. Your verification information is private and used to confirm community eligibility. JRT may remove content or suspend accounts that violate the rules.</div>}
     </div></article>
 
     <div className="form-stack">
