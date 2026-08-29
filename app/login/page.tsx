@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import JrtLogo from "@/components/jrt-logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,21 +25,14 @@ export default function LoginPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (loading) return;
-
     setLoading(true);
     setError("");
 
     try {
       const supabase = createClient();
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Sign in timed out. Please try again.")), 15000),
-      );
-
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Sign in timed out. Please try again.")), 15000));
       const result = await Promise.race([
-        supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
-          password,
-        }),
+        supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password }),
         timeout,
       ]);
 
@@ -46,19 +40,14 @@ export default function LoginPage() {
         setError(result.error.message);
         return;
       }
-
       if (!result.data.session || !result.data.user) {
         setError("We could not create a sign-in session. Please try again.");
         return;
       }
-
       if (result.data.user.user_metadata?.account_type === "advertiser") {
         window.location.replace("/advertise/dashboard");
         return;
       }
-
-      // The root page performs the single authoritative residency check using
-      // server-side state. Do not duplicate that decision in the browser.
       window.location.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in. Please try again.");
@@ -70,7 +59,7 @@ export default function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
+        <Link href="/" className="auth-brand"><JrtLogo /></Link>
         <span className="badge">Residents Only</span>
         <h1>Welcome back</h1>
         <p className="auth-copy">Sign in to your verified neighborhood account.</p>
