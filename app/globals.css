@@ -59,8 +59,27 @@ button,input { font:inherit; } button { cursor:pointer; }
 .profile-detail { margin-top:6px; color:var(--muted); font-size:13px; }
 .private-note { margin-top:12px; padding:10px 12px; background:#f3f4f6; border-radius:11px; color:#4b5563; font-size:12px; text-align:left; }
 
+.jrt-logo { display:flex; flex-direction:column; align-items:center; width:max-content; color:var(--brand); }
+.jrt-logo-mark { position:relative; width:112px; height:84px; }
+.jrt-logo-roof { position:absolute; left:19px; top:6px; width:74px; height:74px; border-left:6px solid var(--brand); border-top:6px solid var(--brand); transform:rotate(45deg); border-radius:4px 0 0 0; }
+.jrt-logo-windows { position:absolute; top:18px; left:50%; transform:translateX(-50%); width:20px; height:20px; display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+.jrt-logo-windows span { background:#54a33b; border-radius:1px; }
+.jrt-logo-letters { position:absolute; left:50%; top:37px; transform:translateX(-50%); font-size:35px; line-height:1; font-weight:900; letter-spacing:-3px; color:#0b4a35; }
+.jrt-logo-swoosh { position:absolute; left:15px; right:14px; bottom:4px; height:15px; border-top:5px solid #54a33b; border-radius:50% 50% 0 0; transform:rotate(-3deg); }
+.jrt-logo-wordmark { margin-top:2px; display:flex; align-items:baseline; gap:2px; font-size:17px; letter-spacing:.04em; }
+.jrt-logo-wordmark strong { color:#0b4a35; font-size:19px; }
+.jrt-logo-wordmark span { color:#3f8f31; font-weight:800; }
+.jrt-logo-tagline { margin-top:7px; font-size:8px; letter-spacing:.14em; font-weight:800; color:#0b4a35; }
+.jrt-logo-compact .jrt-logo-mark { width:48px; height:40px; }
+.jrt-logo-compact .jrt-logo-roof { left:9px; top:4px; width:30px; height:30px; border-width:3px 0 0 3px; }
+.jrt-logo-compact .jrt-logo-windows { top:8px; width:9px; height:9px; gap:1px; }
+.jrt-logo-compact .jrt-logo-letters { top:18px; font-size:15px; letter-spacing:-1.4px; }
+.jrt-logo-compact .jrt-logo-swoosh { left:7px; right:6px; bottom:2px; height:7px; border-top-width:3px; }
+.auth-brand .jrt-logo { margin:0 auto 8px; }
+
 .pwa-install-banner { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(86px + env(safe-area-inset-bottom)); z-index:80; width:min(720px,calc(100% - 24px)); display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:10px; padding:11px 12px; border:1px solid rgba(35,78,63,.16); border-radius:16px; background:rgba(255,255,255,.98); box-shadow:0 12px 34px rgba(17,24,39,.18); backdrop-filter:blur(18px); }
-.pwa-install-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:11px; background:var(--brand); color:#fff; font-size:13px; font-weight:900; letter-spacing:.02em; }
+.pwa-install-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:11px; background:#fff; overflow:hidden; border:1px solid var(--line); }
+.pwa-install-icon img { width:100%; height:100%; object-fit:cover; }
 .pwa-install-copy { min-width:0; display:flex; flex-direction:column; gap:2px; }
 .pwa-install-copy strong { font-size:14px; }
 .pwa-install-copy span { color:var(--muted); font-size:11px; line-height:1.3; }
@@ -74,18 +93,6 @@ button,input { font:inherit; } button { cursor:pointer; }
 .pwa-ios-sheet p { margin:10px 0 16px; color:var(--muted); font-size:13px; line-height:1.45; }
 .pwa-ios-done { width:100%; border:0; border-radius:12px; padding:12px; background:var(--brand); color:#fff; font-weight:800; }
 
-.install-page { min-height:100dvh; display:grid; place-items:center; padding:max(32px,env(safe-area-inset-top)) 18px max(32px,env(safe-area-inset-bottom)); background:radial-gradient(circle at top,#eef5f1 0,#f7f7f5 42%,#f7f7f5 100%); }
-.install-card { width:min(520px,100%); background:#fff; border:1px solid var(--line); border-radius:24px; padding:30px 24px; text-align:center; box-shadow:0 20px 60px rgba(17,24,39,.10); }
-.install-app-icon { width:88px; height:88px; margin:0 auto 18px; border-radius:22px; display:grid; place-items:center; background:var(--brand); color:white; font-weight:900; font-size:24px; letter-spacing:.04em; box-shadow:0 12px 28px rgba(35,78,63,.22); }
-.install-kicker { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; }
-.install-card h1 { margin:0; font-size:30px; line-height:1.08; letter-spacing:-.03em; }
-.install-copy { margin:14px auto 20px; max-width:410px; color:var(--muted); font-size:15px; line-height:1.55; }
-.install-primary { width:100%; border:0; border-radius:14px; padding:14px 18px; background:var(--brand); color:#fff; font-size:15px; font-weight:900; }
-.install-secondary { display:block; margin-top:16px; color:var(--brand); font-size:13px; font-weight:800; text-decoration:none; }
-.install-note { margin:13px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
-.install-steps { margin-top:18px; padding:16px; border-radius:16px; background:var(--brand-soft); text-align:left; display:flex; flex-direction:column; gap:7px; color:#304d42; font-size:13px; line-height:1.4; }
-.install-steps strong { color:var(--brand); font-size:14px; }
-
 @media (display-mode: standalone) {
   .pwa-install-banner { display:none !important; }
 }
@@ -98,8 +105,6 @@ button,input { font:inherit; } button { cursor:pointer; }
   .counter-sub { font-size:11px; max-width:44%; }
   .pwa-install-banner { bottom:calc(82px + env(safe-area-inset-bottom)); grid-template-columns:auto 1fr auto; }
   .pwa-install-close { position:absolute; top:-8px; right:-5px; border:1px solid var(--line); border-radius:999px; background:#fff; font-size:18px; }
-  .install-card { padding:26px 18px; border-radius:20px; }
-  .install-card h1 { font-size:26px; }
 }
 @media (max-width:390px) {
   .counter-card { align-items:flex-start; flex-direction:column; }
