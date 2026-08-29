@@ -31,21 +31,21 @@ export default function AdvertiserSignupPage() {
     });
     if (error) { setError(error.message); setLoading(false); return; }
     if (data.session) { router.push("/policy-agreement?account_type=advertiser"); return; }
-    setMessage("Check your email to confirm your business account. After confirmation, you’ll review the business terms and policies before setup.");
+    setMessage("Check your email to confirm your business account. After confirmation, you’ll review the business terms and policies before creating your free listing.");
     setLoading(false);
   }
 
   return (
     <main className="auth-page"><section className="auth-card">
-      <Link href="/advertise" className="auth-brand">Jordan Ranch & Tamarron</Link>
-      <span className="badge sponsored">Business Advertising</span>
-      <h1>Create a business account</h1>
-      <p className="auth-copy">This account manages your business listing, ads and resident deals. It does not unlock resident-only content.</p>
+      <Link href="/advertise" className="auth-brand">JRT.Community</Link>
+      <span className="badge sponsored">Local Business</span>
+      <h1>List your business free</h1>
+      <p className="auth-copy">Create a business account and submit your listing for review at no cost. After approval, you can optionally choose a monthly visibility bid to compete on the Sponsored Leaderboard. Business accounts do not unlock resident-only content.</p>
       <form onSubmit={submit} className="form-stack">
         <label>Business email<input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} /></label>
         <label>Password<input type="password" minLength={8} required value={password} onChange={(e)=>setPassword(e.target.value)} /></label>
         {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
-        <button className="btn-primary" disabled={loading}>{loading ? "Creating…" : "Create Business Account"}</button>
+        <button className="btn-primary" disabled={loading}>{loading ? "Creating…" : "Create Free Business Account"}</button>
       </form>
     </section></main>
   );
