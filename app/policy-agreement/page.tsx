@@ -23,17 +23,17 @@ export default function PolicyAgreementPage(){
 
   const isBusiness=accountType==="advertiser";
   const links=useMemo(()=>isBusiness?[
-    ["Terms of Service","/policies/terms"],
-    ["Privacy Policy","/policies/privacy"],
-    ["Business & Sponsored Leaderboard Terms","/policies/advertising"],
-    ["Community Guidelines","/policies/community-guidelines"],
-    ["Account & Data Deletion","/policies/account-deletion"],
+    ["Terms of Service","/policies#terms"],
+    ["Privacy Policy","/policies#privacy"],
+    ["Business & Sponsored Leaderboard Terms","/policies#advertising"],
+    ["Community Guidelines","/policies#community"],
+    ["Account & Data Deletion","/policies#deletion"],
   ]:[
-    ["Terms of Service","/policies/terms"],
-    ["Privacy Policy","/policies/privacy"],
-    ["Community Guidelines","/policies/community-guidelines"],
-    ["Marketplace Rules","/policies/marketplace"],
-    ["Account & Data Deletion","/policies/account-deletion"],
+    ["Terms of Service","/policies#terms"],
+    ["Privacy Policy","/policies#privacy"],
+    ["Community Guidelines","/policies#community"],
+    ["Marketplace Rules","/policies#marketplace"],
+    ["Account & Data Deletion","/policies#deletion"],
   ],[isBusiness]);
 
   async function continueFlow(){
