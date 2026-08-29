@@ -47,9 +47,7 @@ export default function PwaInstall() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        // Installation remains usable even if registration is temporarily unavailable.
-      });
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 
@@ -111,10 +109,7 @@ export default function PwaInstall() {
   };
 
   const dismiss = () => {
-    localStorage.setItem(
-      DISMISSED_UNTIL_KEY,
-      String(Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000),
-    );
+    localStorage.setItem(DISMISSED_UNTIL_KEY, String(Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000));
     setVisible(false);
   };
 
@@ -123,17 +118,13 @@ export default function PwaInstall() {
   return (
     <>
       <aside className="pwa-install-banner" aria-label="Install JRT.Community">
-        <div className="pwa-install-icon" aria-hidden="true">JRT</div>
+        <div className="pwa-install-icon" aria-hidden="true"><img src="/icon-192" alt="" /></div>
         <div className="pwa-install-copy">
           <strong>Get the JRT App</strong>
           <span>{isIOS ? "Add JRT.Community to your iPhone Home Screen." : "Install JRT.Community for faster access."}</span>
         </div>
-        <button className="pwa-install-button" type="button" onClick={install}>
-          {isIOS ? "Add" : "Install"}
-        </button>
-        <button className="pwa-install-close" type="button" aria-label="Dismiss install prompt" onClick={dismiss}>
-          ×
-        </button>
+        <button className="pwa-install-button" type="button" onClick={install}>{isIOS ? "Add" : "Install"}</button>
+        <button className="pwa-install-close" type="button" aria-label="Dismiss install prompt" onClick={dismiss}>×</button>
       </aside>
 
       {showIOSInstructions && (
