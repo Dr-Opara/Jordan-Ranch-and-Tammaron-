@@ -4,9 +4,9 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import JrtLogo from "@/components/jrt-logo";
 
 type Community = "jordan_ranch" | "tamarron";
-
 const PRODUCTION_SITE_URL = "https://jrt.community";
 
 export default function SignupPage() {
@@ -61,7 +61,6 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
-
     if (data.session) {
       router.push("/policy-agreement?account_type=resident");
       return;
@@ -74,7 +73,7 @@ export default function SignupPage() {
   return (
     <main className="auth-page">
       <section className="auth-card wide">
-        <Link href="/" className="auth-brand">Jordan Ranch & Tamarron Residents</Link>
+        <Link href="/" className="auth-brand"><JrtLogo /></Link>
         <span className="badge">Resident Registration</span>
         <h1>Join your community</h1>
         <p className="auth-copy">Enter your full legal name for private residency verification. After approval, other residents will only see your first name and last initial.</p>
