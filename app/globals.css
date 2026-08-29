@@ -74,6 +74,18 @@ button,input { font:inherit; } button { cursor:pointer; }
 .pwa-ios-sheet p { margin:10px 0 16px; color:var(--muted); font-size:13px; line-height:1.45; }
 .pwa-ios-done { width:100%; border:0; border-radius:12px; padding:12px; background:var(--brand); color:#fff; font-weight:800; }
 
+.install-page { min-height:100dvh; display:grid; place-items:center; padding:max(32px,env(safe-area-inset-top)) 18px max(32px,env(safe-area-inset-bottom)); background:radial-gradient(circle at top,#eef5f1 0,#f7f7f5 42%,#f7f7f5 100%); }
+.install-card { width:min(520px,100%); background:#fff; border:1px solid var(--line); border-radius:24px; padding:30px 24px; text-align:center; box-shadow:0 20px 60px rgba(17,24,39,.10); }
+.install-app-icon { width:88px; height:88px; margin:0 auto 18px; border-radius:22px; display:grid; place-items:center; background:var(--brand); color:white; font-weight:900; font-size:24px; letter-spacing:.04em; box-shadow:0 12px 28px rgba(35,78,63,.22); }
+.install-kicker { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; }
+.install-card h1 { margin:0; font-size:30px; line-height:1.08; letter-spacing:-.03em; }
+.install-copy { margin:14px auto 20px; max-width:410px; color:var(--muted); font-size:15px; line-height:1.55; }
+.install-primary { width:100%; border:0; border-radius:14px; padding:14px 18px; background:var(--brand); color:#fff; font-size:15px; font-weight:900; }
+.install-secondary { display:block; margin-top:16px; color:var(--brand); font-size:13px; font-weight:800; text-decoration:none; }
+.install-note { margin:13px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
+.install-steps { margin-top:18px; padding:16px; border-radius:16px; background:var(--brand-soft); text-align:left; display:flex; flex-direction:column; gap:7px; color:#304d42; font-size:13px; line-height:1.4; }
+.install-steps strong { color:var(--brand); font-size:14px; }
+
 @media (display-mode: standalone) {
   .pwa-install-banner { display:none !important; }
 }
@@ -86,6 +98,8 @@ button,input { font:inherit; } button { cursor:pointer; }
   .counter-sub { font-size:11px; max-width:44%; }
   .pwa-install-banner { bottom:calc(82px + env(safe-area-inset-bottom)); grid-template-columns:auto 1fr auto; }
   .pwa-install-close { position:absolute; top:-8px; right:-5px; border:1px solid var(--line); border-radius:999px; background:#fff; font-size:18px; }
+  .install-card { padding:26px 18px; border-radius:20px; }
+  .install-card h1 { font-size:26px; }
 }
 @media (max-width:390px) {
   .counter-card { align-items:flex-start; flex-direction:column; }
