@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { stripePost, stripePriceEnv } from "@/lib/stripe";
+import { stripePost } from "@/lib/stripe";
 
 export async function POST(request: Request) {
   try {
-    const { planCode } = await request.json();
-    if (!planCode || !stripePriceEnv[planCode]) {
-      return NextResponse.json({ error: "This advertising plan is not configured for payment yet." }, { status: 400 });
+    const { bidAmount } = await request.json();
+    const amount = Math.floor(Number(bidAmount));
+    if (!Number.isFinite(amount) || amount < 10 || amount > 10000) {
+      return NextResponse.json({ error: "Enter a monthly visibility bid between $10 and $10,000." }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -21,55 +22,59 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
     if (businessError || !business) return NextResponse.json({ error: "Complete your business profile first." }, { status: 400 });
-    if (business.review_status === "draft") return NextResponse.json({ error: "Complete and submit your business information before payment." }, { status: 400 });
+    if (business.review_status === "draft") return NextResponse.json({ error: "Complete and submit your business information before bidding." }, { status: 400 });
 
-    const { data: plan } = await supabase.from("advertising_plans").select("code,name,price_monthly").eq("code", planCode).eq("active", true).maybeSingle();
-    if (!plan) return NextResponse.json({ error: "Advertising plan not found." }, { status: 404 });
+    const { data: existingActive } = await supabase
+      .from("business_plan_subscriptions")
+      .select("id,stripe_subscription_id,status")
+      .eq("business_id", business.id)
+      .in("status", ["pending", "active", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingActive?.stripe_subscription_id) {
+      return NextResponse.json({ error: "You already have an active leaderboard subscription. Manage or cancel it from your dashboard before starting a new bid." }, { status: 409 });
+    }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
     const body = new URLSearchParams();
     body.set("mode", "subscription");
-    body.set("line_items[0][price]", stripePriceEnv[planCode]!);
+    body.set("line_items[0][price_data][currency]", "usd");
+    body.set("line_items[0][price_data][unit_amount]", String(amount * 100));
+    body.set("line_items[0][price_data][recurring][interval]", "month");
+    body.set("line_items[0][price_data][product_data][name]", `JRT Sponsored Leaderboard — ${business.name}`);
     body.set("line_items[0][quantity]", "1");
     body.set("success_url", `${siteUrl}/advertise/dashboard?payment=success`);
     body.set("cancel_url", `${siteUrl}/advertise/plans?payment=canceled`);
     body.set("client_reference_id", business.id);
     body.set("metadata[business_id]", business.id);
-    body.set("metadata[plan_code]", planCode);
+    body.set("metadata[bid_amount]", String(amount));
+    body.set("metadata[plan_code]", "listed");
     body.set("subscription_data[metadata][business_id]", business.id);
-    body.set("subscription_data[metadata][plan_code]", planCode);
-    body.set("allow_promotion_codes", "true");
+    body.set("subscription_data[metadata][bid_amount]", String(amount));
+    body.set("subscription_data[metadata][plan_code]", "listed");
     const customerEmail = business.business_email || business.contact_email || user.email;
     if (customerEmail) body.set("customer_email", customerEmail);
 
     const session = await stripePost("/checkout/sessions", body);
 
-    const { data: existing } = await supabase
-      .from("business_plan_subscriptions")
-      .select("id")
-      .eq("business_id", business.id)
-      .in("status", ["pending", "active"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existing) {
+    if (existingActive) {
       await supabase.from("business_plan_subscriptions").update({
-        plan_code: planCode,
+        plan_code: "listed",
         status: "pending",
         payment_status: "processing",
         stripe_checkout_session_id: session.id,
-        stripe_price_id: stripePriceEnv[planCode],
+        stripe_price_id: null,
         updated_at: new Date().toISOString(),
-      }).eq("id", existing.id);
+      }).eq("id", existingActive.id);
     } else {
       await supabase.from("business_plan_subscriptions").insert({
         business_id: business.id,
-        plan_code: planCode,
+        plan_code: "listed",
         status: "pending",
         payment_status: "processing",
         stripe_checkout_session_id: session.id,
-        stripe_price_id: stripePriceEnv[planCode],
+        stripe_price_id: null,
       });
     }
 
