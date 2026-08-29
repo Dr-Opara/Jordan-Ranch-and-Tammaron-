@@ -6,13 +6,6 @@ function secret() {
   return key;
 }
 
-export const stripePriceEnv: Record<string, string | undefined> = {
-  listed: process.env.STRIPE_PRICE_GET_LISTED,
-  noticed: process.env.STRIPE_PRICE_GET_NOTICED,
-  featured: process.env.STRIPE_PRICE_GET_FEATURED,
-  everywhere: process.env.STRIPE_PRICE_GET_EVERYWHERE,
-};
-
 export async function stripePost(path: string, body: URLSearchParams) {
   const response = await fetch(`${STRIPE_API}${path}`, {
     method: "POST",
