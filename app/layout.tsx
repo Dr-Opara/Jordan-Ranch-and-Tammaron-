@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import AuthFooter from "@/components/auth-footer";
 import PwaInstall from "@/components/pwa-install";
+import BusinessDirectoryEnhancer from "@/components/business-directory-enhancer";
 import "./globals.css";
 import "./forms.css";
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         {children}
+        <BusinessDirectoryEnhancer />
         <PwaInstall />
         <AuthFooter />
       </body>
