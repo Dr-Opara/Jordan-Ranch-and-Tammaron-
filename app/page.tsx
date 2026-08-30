@@ -97,8 +97,5 @@ export default async function Page() {
     .sort((a,b)=>new Date(b.published_at).getTime()-new Date(a.published_at).getTime())
     .slice(0,20);
 
-  return <>
-    <ResidentApp profile={{id:profile.id,first_name:profile.first_name,last_initial:profile.last_initial,profile_photo_url:profile.profile_photo_url,community:profile.community,profession:profile.profession,business_name:profile.business_name,member_since:profile.member_since}} residentCount={{total:totalResult.count??0,jordan:jordanResult.count??0,tamarron:tamarronResult.count??0}} listings={(listingsResult.data??[]) as never[]} businesses={(businessesResult.data??[]) as never[]} homeAds={(homeAdsResult.data??[]) as never[]} localAds={(localAdsResult.data??[]) as never[]} deals={(dealsResult.data??[]) as never[]} updates={combinedUpdates as never[]} events={(eventsResult.data??[]) as never[]}/>
-    <Link href="/community/new" className="share-update-fab">+ Share Update</Link>
-  </>;
+  return <ResidentApp profile={{id:profile.id,first_name:profile.first_name,last_initial:profile.last_initial,profile_photo_url:profile.profile_photo_url,community:profile.community,profession:profile.profession,business_name:profile.business_name,member_since:profile.member_since}} residentCount={{total:totalResult.count??0,jordan:jordanResult.count??0,tamarron:tamarronResult.count??0}} listings={(listingsResult.data??[]) as never[]} businesses={(businessesResult.data??[]) as never[]} homeAds={(homeAdsResult.data??[]) as never[]} localAds={(localAdsResult.data??[]) as never[]} deals={(dealsResult.data??[]) as never[]} updates={combinedUpdates as never[]} events={(eventsResult.data??[]) as never[]}/>;
 }
